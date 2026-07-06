@@ -69,10 +69,13 @@ function verificarEExibirOverlay() {
 }
 
 // 2. DETECÇÃO INTELIGENTE DO DRIVE
+// 2. DETECÇÃO INTELIGENTE DO DRIVE
 async function detectarNomeAnime() {
     let url = window.location.href;
     
     if (url.includes("netflix.com")) {
+        let nomeNetflix = null; // Correção do ReferenceError (declarado com let)
+        
         let tituloNetflix = document.querySelector('[data-uia="video-title"] h4')?.innerText || 
                            document.querySelector('[data-uia="evidence-overlay-title"]')?.innerText ||
                            document.querySelector('.watch-video--evidence-overlay-container h2')?.innerText;
@@ -85,11 +88,9 @@ async function detectarNomeAnime() {
         let backup = document.querySelector('.video-title h4')?.innerText;
         if (backup) return backup.trim();
 
-        if (!nomeNetflix) {
-            let btnEpisodios = document.querySelector('[data-uia="control-episodes"]');
-            if (btnEpisodios) {
-                nomeNetflix = btnEpisodios.getAttribute('aria-label').replace("Episódios de ", "").replace("Episodes of ", "");
-            }
+        let btnEpisodios = document.querySelector('[data-uia="control-episodes"]');
+        if (btnEpisodios) {
+            nomeNetflix = btnEpisodios.getAttribute('aria-label').replace("Episódios de ", "").replace("Episodes of ", "");
         }
 
         const listaNegra = [
@@ -130,13 +131,19 @@ function ehNomeGenerico(nome) {
 function buscarDadosNoJikan(termo) {
     if(!termo) return;
     fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(termo)}&limit=1`)
-        .then(r => r.json())
+        .then(r => {
+            if (!r.ok) throw new Error(`HTTP Error! Status: ${r.status}`);
+            return r.json();
+        })
         .then(data => {
             if(data.data && data.data.length > 0) {
                 animeDetectado = data.data[0];
                 totalEpisodiosAnime = animeDetectado.episodes; 
                 console.log(`Anime: ${animeDetectado.title} | Total EPs: ${totalEpisodiosAnime}`);
             }
+        })
+        .catch(err => {
+            console.warn("MAL Reviewer: Erro ao consultar a API Jikan:", err);
         });
 }
 
@@ -146,6 +153,7 @@ function mostrarOverlay() {
     
     let div = document.createElement('div');
     div.id = 'mal-overlay-container';
+    
     div.innerHTML = `
         <div class="overlay-header">
             <span>Fim do Episódio?</span>
@@ -153,15 +161,19 @@ function mostrarOverlay() {
         </div>
         <div class="overlay-body">
             <div class="overlay-info">
-                <img src="${animeDetectado.images.jpg.small_image_url}">
+                <img id="mal-overlay-img" src="" alt="Capa">
                 <div>
-                    <div style="font-weight:bold; font-size:14px">${animeDetectado.title}</div>
+                    <div id="mal-overlay-title" style="font-weight:bold; font-size:14px"></div>
                     <div style="font-size:12px; color:#ccc">Dê sua nota agora!</div>
                 </div>
             </div>
             <button class="btn-rate" id="btnOpenExtension">DAR NOTA</button>
         </div>
     `;
+
+    // Injeção segura de dados externos usando propriedades nativas do DOM
+    div.querySelector('#mal-overlay-img').src = animeDetectado.images.jpg.small_image_url || "";
+    div.querySelector('#mal-overlay-title').textContent = animeDetectado.title || "";
 
     document.body.appendChild(div);
     div.style.display = 'block';

@@ -4,51 +4,189 @@
     <meta charset="UTF-8">
     <title>Configurações - MAL Reviewer</title>
     <style>
-        body { background: #1a1a1d; color: white; font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+        body { background: #1a1a1d; color: white; font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; padding-bottom: 100px; }
         h2 { color: #6c5ce7; border-bottom: 1px solid #444; padding-bottom: 10px; }
         .section { background: #2d2d33; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         label { cursor: pointer; }
         
-        /* Botão Login */
+        /* Botões Gerais */
         #btnLogin { background: #2e51a2; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         #btnLogin:disabled { background: #444; cursor: default; }
         
         /* Checkbox bonito */
-        input[type=checkbox] { transform: scale(1.2); }
+        input[type=checkbox] { transform: scale(1.2); cursor: pointer; }
         
         .status { font-size: 12px; margin-top: 5px; }
         .logged-in { color: #00b894; }
         .logged-out { color: #ff7675; }
+
+        /* Botão Ver Biblioteca no Options */
+        #btnVerBibliotecaOptions {
+            width: 100%;
+            background: #202024;
+            color: white;
+            border: 1px solid #444;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            margin-top: 5px;
+        }
+        #btnVerBibliotecaOptions:hover {
+            background: #3a3a42;
+            border-color: #6c5ce7;
+            transform: translateY(-1px);
+        }
+
+        /* Animações e Estilos dos Critérios */
+        #listaCriterios .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px 15px;
+            border-radius: 6px;
+            background: #202024;
+            border: 1px solid #333;
+            transition: all 0.25s ease-in-out;
+            border-left: 4px solid transparent;
+        }
+
+        /* Efeito Hover nos itens da lista de critérios */
+        #listaCriterios .row:hover {
+            background: #2b2b30;
+            border-color: #6c5ce7;
+            transform: translateX(6px);
+            border-left-color: #6c5ce7;
+            box-shadow: 0 4px 12px rgba(108, 92, 231, 0.15);
+        }
+
+        #listaCriterios span {
+            font-size: 14px;
+            font-weight: 500;
+            color: #e0e0e0;
+            transition: color 0.25s ease;
+        }
+
+        #listaCriterios .row:hover span {
+            color: #6c5ce7;
+        }
+
+        #listaCriterios button {
+            transition: transform 0.2s ease, filter 0.2s ease;
+        }
+        #listaCriterios button:hover {
+            transform: scale(1.25);
+            filter: drop-shadow(0 0 5px rgba(255,118,117,0.5));
+        }
+
+        /* Estilos do Bloco de Atualização / Backup */
+        .batch-btn {
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+        .batch-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        #btnBatchUpdate { background: #e84118; color: white; }
+        #btnRestoreBackup { background: #2e51a2; color: white; margin-left: 10px; }
+
+        /* Barra de Salvamento Estilo Discord */
+        #discordSaveBar {
+            position: fixed;
+            bottom: -85px; /* escondido por padrão */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 560px;
+            background: #111214;
+            border: 1px solid #6c5ce7;
+            border-radius: 8px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+            transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 9999;
+        }
+        #discordSaveBar span {
+            font-size: 13.5px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        #discordSaveBar .button-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        #discordSaveBar button {
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+            transition: transform 0.1s, filter 0.15s;
+        }
+        #discordSaveBar button:active {
+            transform: scale(0.96);
+        }
+        #btnDescartarCriterios {
+            background: transparent;
+            color: #ff7675;
+        }
+        #btnDescartarCriterios:hover {
+            text-decoration: underline;
+        }
+        #btnSalvarCriterios {
+            background: #248046;
+            color: white;
+        }
+        #btnSalvarCriterios:hover {
+            background: #1a6535;
+        }
     </style>
 </head>
 <body>
 
     <h2>Integração MyAnimeList</h2>
     
-    <!-- ÁREA DE LOGIN (Aparece se deslogado) -->
+    <!-- ÁREA DE LOGIN -->
     <div id="loginContainer" class="section">
         <p>Para enviar as notas automaticamente, faça login.</p>
         <button id="btnLogin">Conectar com MyAnimeList</button>
         <p id="loginStatus" class="status logged-out">Desconectado</p>
     </div>
 
-    <!-- ÁREA DE PERFIL (Hiddem por padrão, JS ativa como 'flex') -->
-    <div class="section" id="perfilArea" style="display: none; align-items: center; justify-content: space-between; gap: 15px;">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <img id="userImg" src="" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #6c5ce7; object-fit: cover;">
-            <div>
-                <strong id="userName"></strong><br>
-                <span style="font-size: 12px; color: #00b894;">Conectado ao MyAnimeList</span>
+    <!-- ÁREA DE PERFIL -->
+    <div class="section" id="perfilArea" style="display: none; flex-direction: column; gap: 15px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img id="userImg" src="" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #6c5ce7; object-fit: cover;">
+                <div>
+                    <strong id="userName"></strong><br>
+                    <span style="font-size: 12px; color: #00b894;">Conectado ao MyAnimeList</span>
+                </div>
             </div>
+            <button id="btnLogout" style="background: #ff7675; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: bold;">Desvincular</button>
         </div>
-        <!-- Botão de Desvincular -->
-        <button id="btnLogout" style="background: #ff7675; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: bold;">Desvincular</button>
+        
+        <!-- Botão Biblioteca (Options) -->
+        <button id="btnVerBibliotecaOptions">📂 Ver Minha Biblioteca</button>
     </div>
 
     <h2>Preferências</h2>
     <div class="section">
-        <h2 style="color: red;">Ao mudar as configurações clique em salvar no final da página</h2>
         <div class="row">
             <label for="autoOpen">Abrir janela automaticamente no fim do episódio</label>
             <input type="checkbox" id="autoOpen" checked>
@@ -60,6 +198,14 @@
         </div>
 
         <div class="row">
+            <label for="viewMode">Visualização da extensão:</label>
+            <select id="viewMode" style="background: #1a1a1d; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; cursor: pointer;">
+                <option value="popup">Balão Popup (Padrão)</option>
+                <option value="sidepanel">Barra Lateral (Side Panel)</option>
+            </select>
+        </div>
+
+        <div class="row" style="margin-bottom: 5px;">
             <div style="max-width: 80%;">
                 <label for="officialScore">Usar Média Técnica como Nota Oficial</label>
                 <div style="font-size: 11px; color: #aaa;">
@@ -68,6 +214,13 @@
                 </div>
             </div>
             <input type="checkbox" id="officialScore">
+        </div>
+
+        <!-- Área dinâmica de Atualização em Massa / Backup -->
+        <div id="batchUpdateArea" style="margin-top: 15px; border-top: 1px dashed #444; padding-top: 15px; display: none;">
+            <button id="btnBatchUpdate" class="batch-btn">🔄 Atualizar Notas Antigas</button>
+            <button id="btnRestoreBackup" class="batch-btn" style="display: none;">⏪ Restaurar Backup</button>
+            <div id="batchProgress" style="font-size: 12px; margin-top: 10px; color: #aaa; font-weight: bold; line-height: 1.4;"></div>
         </div>
     </div>
 
@@ -80,8 +233,14 @@
         </div>
     </div>
 
-    <button id="btnSalvar" style="width:100%; padding: 12px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Salvar Configurações</button>
-    <p id="msg" style="text-align: center; color: #00b894; font-weight: bold; height: 20px;"></p>
+    <!-- BARRA FLUTUANTE ESTILO DISCORD (Aparece em alterações não salvas) -->
+    <div id="discordSaveBar">
+        <span id="discordBarText">Cuidados — Você tem alterações não salvas nos critérios!</span>
+        <div class="button-group">
+            <button id="btnDescartarCriterios">Descartar</button>
+            <button id="btnSalvarCriterios">Salvar alterações</button>
+        </div>
+    </div>
 
     <script src="options.js"></script>
 </body>

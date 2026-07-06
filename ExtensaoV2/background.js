@@ -3,9 +3,6 @@ const CLIENT_ID = 'bbbe6e02d9d0140e9bad74dd1116d6b6';
 const REDIRECT_URI = chrome.identity.getRedirectURL(); 
 
 console.log("Sua Redirect URI é:", REDIRECT_URI);
-const REDIRECT_URI = chrome.identity.getRedirectURL(); 
-
-console.log("Sua Redirect URI é:", REDIRECT_URI);
 
 function generateCodeVerifier() {
     const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -26,6 +23,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'enviarNotaMAL') {
         executarEnvioMAL(message.dados, sendResponse);
         return true; 
+    }
+    if (message.action === 'mudarModoExibicao') {
+        configurarModoDeExibicao(message.mode);
+        sendResponse({ success: true });
+        return true;
     }
 });
 
@@ -175,3 +177,30 @@ async function executarEnvioMAL(payload, sendResponse) {
         sendResponse({ success: false, error: err.message });
     }
 }
+
+function configurarModoDeExibicao(mode) {
+    if (!chrome.sidePanel) {
+        console.warn("MAL Reviewer: A API sidePanel ainda não está disponível. Certifique-se de recarregar a extensão em chrome://extensions.");
+        return;
+    }
+
+    if (mode === 'sidepanel') {
+        chrome.action.setPopup({ popup: '' });
+        chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
+    } else {
+        chrome.action.setPopup({ popup: 'popup.html' });
+        chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(console.error);
+    }
+}
+
+function restaurarModoDeExibicao() {
+    chrome.storage.local.get(['viewMode'], (res) => {
+        const mode = res.viewMode || 'popup';
+        configurarModoDeExibicao(mode);
+    });
+}
+
+chrome.runtime.onInstalled.addListener(restaurarModoDeExibicao);
+chrome.runtime.onStartup.addListener(restaurarModoDeExibicao);
+
+restaurarModoDeExibicao();

@@ -76,9 +76,10 @@ async function carregarListaCompleta(token) {
 function processarComentario(texto) {
     if (!texto) return { media: "N/A", detalhes: {} };
 
-    const txtArea = document.createElement('textarea');
-    txtArea.innerHTML = texto;
-    const textoDecodificado = txtArea.value;
+    // Decodificação segura utilizando parser HTML do navegador (evita injeção)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(texto, 'text/html');
+    const textoDecodificado = doc.documentElement.textContent || "";
 
     const linhas = textoDecodificado.split('\n');
     const detalhes = {};
@@ -123,44 +124,52 @@ function renderizarCards(lista) {
         card.className = 'anime-card';
         card.addEventListener('click', () => abrirModalView(anime));
 
-        // Define a cor da média técnica (Dourado se tiver nota, cinza se N/A)
         const corMedia = anime.mediaTecnica !== "N/A" ? "var(--gold)" : "var(--text-muted)";
 
+        // Estrutura estática segura com classes identificadoras
         card.innerHTML = `
-            <img src="${anime.capa}" class="card-capa">
+            <img class="card-capa" src="" alt="Capa">
             <div class="card-body">
-                <h3>${anime.titulo}</h3>
+                <h3 class="card-title"></h3>
                 <div class="info-mal">
                     <!-- Bloco Nota Global -->
                     <div class="info-badge" title="Média Global MAL">
                         <span class="emoji">🌟</span>
                         <span class="label">Global</span>
-                        <span class="valor">${anime.notaGeralMAL}</span>
+                        <span class="valor card-global-score"></span>
                     </div>
                     
                     <!-- Bloco Sua Nota -->
                     <div class="info-badge destaque" title="Sua Nota Pessoal">
                         <span class="emoji">👤</span>
                         <span class="label">Sua Nota</span>
-                        <span class="valor">${anime.notaMAL > 0 ? anime.notaMAL : '-'}</span>
+                        <span class="valor card-user-score"></span>
                     </div>
                 </div>
             </div>
             <div class="card-footer">
                 <div class="tech-box">
                     <div class="tech-label">Média Técnica</div>
-                    <div class="nota-media" style="color: ${corMedia}">${anime.mediaTecnica}</div>
+                    <div class="nota-media card-tech-score" style="color: ${corMedia}"></div>
                 </div>
                 
                 <!-- Container para Estúdio e Ano alinhados à direita -->
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; max-width: 60%;">
-                    <span style="font-size: 11px; color: var(--accent); font-weight: 600; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;">
-                        ${anime.estudio}
-                    </span>
-                    <span class="badge-ano">${anime.ano}</span>
+                    <span class="card-studio" style="font-size: 11px; color: var(--accent); font-weight: 600; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;"></span>
+                    <span class="badge-ano card-year"></span>
                 </div>
             </div>
         `;
+
+        // Atribuição de textos e links de forma segura
+        card.querySelector('.card-capa').src = anime.capa || "";
+        card.querySelector('.card-title').textContent = anime.titulo || "";
+        card.querySelector('.card-global-score').textContent = anime.notaGeralMAL || "N/A";
+        card.querySelector('.card-user-score').textContent = anime.notaMAL > 0 ? anime.notaMAL : '-';
+        card.querySelector('.card-tech-score').textContent = anime.mediaTecnica || "N/A";
+        card.querySelector('.card-studio').textContent = anime.estudio || "Estúdio Desconhecido";
+        card.querySelector('.card-year').textContent = anime.ano || "TBA";
+
         grid.appendChild(card);
     });
 }
@@ -172,55 +181,40 @@ function abrirModalView(anime) {
     const modal = document.getElementById('modalDetalhes');
     const conteudo = document.getElementById('detalhesConteudo');
 
-    // 1. Gera HTML do Modo Visualização
-    let htmlView = `<div class="view-mode-grid">`;
     const criterios = Object.keys(anime.notasDetalhadas);
-    
-    if (criterios.length > 0) {
-        criterios.forEach(crit => {
-            htmlView += `
-                <div class="view-item">
-                    <span>${crit}</span>
-                    <span>${anime.notasDetalhadas[crit].toFixed(1)}</span>
-                </div>`;
-        });
-    } else {
-        htmlView += `<div style="grid-column:1/-1; color:#777; padding:10px;">Sem avaliação técnica. Clique em Editar.</div>`;
-    }
-    htmlView += `</div>`;
 
-    // 2. Monta estrutura do Modal
+    // Estrutura base estática
     conteudo.innerHTML = `
         <div class="modal-capa-container">
-            <img src="${anime.capa}" class="modal-img">
+            <img class="modal-img" src="" alt="Capa">
         </div>
         <div class="modal-info">
             <div class="modal-header">
-                <h2>${anime.titulo}</h2>
-                <div class="sub-header">${anime.estudio} • ${anime.ano}</div>
+                <h2 class="modal-title"></h2>
+                <div class="sub-header modal-sub-header"></div>
             </div>
 
             <div class="stats-row">
                 <div class="stat-box">
                     <span>Global</span>
-                    <strong>${anime.notaGeralMAL}</strong>
+                    <strong class="modal-global-score"></strong>
                 </div>
                 <div class="stat-box">
                     <span>Sua Nota</span>
-                    <strong>${anime.notaMAL > 0 ? anime.notaMAL : '-'}</strong>
+                    <strong class="modal-user-score"></strong>
                 </div>
                 <div class="stat-box highlight">
                     <span>Média Técnica</span>
-                    <strong id="displayMediaTecnica">${anime.mediaTecnica}</strong>
+                    <strong id="displayMediaTecnica"></strong>
                 </div>
             </div>
 
             <!-- CONTAINER DE VISUALIZAÇÃO -->
             <div id="containerView">
                 <h3 style="font-size:14px; color:var(--text-muted); border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:20px;">DETALHES TÉCNICOS</h3>
-                ${htmlView}
+                <div id="modalCriteriosViewContainer"></div>
                 <div class="action-bar">
-                    <a href="https://myanimelist.net/anime/${anime.id}" target="_blank" class="btn-secondary">Ver no MAL</a>
+                    <a id="modalLinkMAL" href="" target="_blank" class="btn-secondary">Ver no MAL</a>
                     <button id="btnEditarAvaliacao" class="btn-primary">✐ Editar Avaliação</button>
                 </div>
             </div>
@@ -229,7 +223,6 @@ function abrirModalView(anime) {
             <div id="containerEdit" class="edit-mode-container">
                 <h3 style="font-size:14px; color:var(--text-muted); margin-bottom:15px;">EDITANDO AVALIAÇÃO</h3>
                 
-                <!-- AQUI ESTÁ A CORREÇÃO: id="destaqueNotaMal" -->
                 <div class="edit-row" id="destaqueNotaMal">
                      <label>Sua Nota Oficial (MAL)</label>
                      <select id="editNotaMAL">
@@ -254,7 +247,45 @@ function abrirModalView(anime) {
         </div>
     `;
 
-    // 3. Listeners
+    // Atribuição textual segura
+    conteudo.querySelector('.modal-img').src = anime.capa || "";
+    conteudo.querySelector('.modal-title').textContent = anime.titulo || "";
+    conteudo.querySelector('.modal-sub-header').textContent = `${anime.estudio || 'Estúdio Desconhecido'} • ${anime.ano || 'TBA'}`;
+    conteudo.querySelector('.modal-global-score').textContent = anime.notaGeralMAL || "N/A";
+    conteudo.querySelector('.modal-user-score').textContent = anime.notaMAL > 0 ? anime.notaMAL : '-';
+    conteudo.querySelector('#displayMediaTecnica').textContent = anime.mediaTecnica || "N/A";
+    conteudo.querySelector('#modalLinkMAL').href = `https://myanimelist.net/anime/${anime.id}`;
+
+    // Construção segura da grade de critérios
+    const viewContainer = conteudo.querySelector('#modalCriteriosViewContainer');
+    viewContainer.innerHTML = '';
+    
+    const gridView = document.createElement('div');
+    gridView.className = 'view-mode-grid';
+    
+    if (criterios.length > 0) {
+        criterios.forEach(crit => {
+            const viewItem = document.createElement('div');
+            viewItem.className = 'view-item';
+            
+            const spanCrit = document.createElement('span');
+            spanCrit.textContent = crit;
+            
+            const spanNota = document.createElement('span');
+            spanNota.textContent = anime.notasDetalhadas[crit].toFixed(1);
+            
+            viewItem.appendChild(spanCrit);
+            viewItem.appendChild(spanNota);
+            gridView.appendChild(viewItem);
+        });
+        viewContainer.appendChild(gridView);
+    } else {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.style.cssText = 'grid-column:1/-1; color:#777; padding:10px;';
+        emptyMsg.textContent = 'Sem avaliação técnica. Clique em Editar.';
+        viewContainer.appendChild(emptyMsg);
+    }
+
     document.getElementById('btnEditarAvaliacao').addEventListener('click', ativarModoEdicao);
     document.getElementById('btnCancelarEdit').addEventListener('click', cancelarEdicao);
     document.getElementById('btnAddCriterio').addEventListener('click', addCriterioDOM);

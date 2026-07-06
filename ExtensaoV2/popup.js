@@ -401,7 +401,10 @@ function limparTitulo(t) {
 
 async function verificarNotaNoMAL(malId) {
     const res = await chrome.storage.local.get(['mal_access_token']);
-    if (!res.mal_access_token) return false;
+    if (!res.mal_access_token) {
+        document.getElementById('notaUsuarioMAL').innerText = "-";
+        return false;
+    }
 
     try {
         const resp = await fetch(`https://api.myanimelist.net/v2/anime/${malId}?fields=my_list_status{score,comments}`, {
@@ -411,7 +414,7 @@ async function verificarNotaNoMAL(malId) {
         if (resp.ok) {
             const dados = await resp.json();
             if (dados.my_list_status) {
-                 document.getElementById('notaUsuarioMAL').innerText = dados.my_list_status.score > 0 ? dados.my_list_status.score : "-";
+                document.getElementById('notaUsuarioMAL').innerText = dados.my_list_status.score > 0 ? dados.my_list_status.score : "-";
                 let selMal = document.getElementById('notaMalOficial');
                 if(selMal) selMal.value = dados.my_list_status.score || 0;
 
@@ -420,17 +423,24 @@ async function verificarNotaNoMAL(malId) {
                     return true;
                 }
                 if (dados.my_list_status.score > 0) return true;
+            } else {
+                document.getElementById('notaUsuarioMAL').innerText = "-";
             }
+        } else {
+            document.getElementById('notaUsuarioMAL').innerText = "-";
         }
-    } catch (e) { console.error("Erro API MAL:", e); }
+    } catch (e) { 
+        console.error("Erro API MAL:", e); 
+        document.getElementById('notaUsuarioMAL').innerText = "-";
+    }
     return false;
 }
 
-// NOVA FUNÇÃO: Transforma o comentário do MAL em objeto para o Popup
 function processarComentarioParaPopup(comentario, malId) {
-    const txtArea = document.createElement('textarea');
-    txtArea.innerHTML = comentario;
-    const textoDecodificado = txtArea.value;
+    // Decodificação segura utilizando parser HTML do navegador (evita injeção)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(comentario, 'text/html');
+    const textoDecodificado = doc.documentElement.textContent || "";
 
     const linhas = textoDecodificado.split('\n');
     const dadosRecuperados = { mal_id: malId };
@@ -532,6 +542,8 @@ async function traduzirParaIngles(titulo) {
         const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(titulo)}`;
         
         const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
+        
         const data = await response.json();
         
         if (data && data[0] && data[0][0] && data[0][0][0]) {
@@ -540,7 +552,7 @@ async function traduzirParaIngles(titulo) {
             return resultado;
         }
     } catch (e) {
-        console.error("Falha na conexão com tradutor:", e);
+        console.warn("Falha na conexão com tradutor:", e);
     }
     return titulo;
 }
