@@ -1,2 +1,19 @@
 # Extensao
 
+1. Baixe e extraia os arquivos
+Faça o download do arquivo da extensão para o seu computador e extraia (descompacte) a pasta em um local de fácil acesso.
+
+2. Acesse a página de extensões do navegador
+Abra o seu navegador e escolha uma das opções abaixo para abrir a página de extensões:
+Opção A: Digite chrome://extensions na barra de endereços (onde você digita os sites) e aperte Enter.
+Opção B: Clique no ícone de Extensões (geralmente o desenho de uma peça de quebra-cabeça) no canto superior direito do navegador e clique em "Gerenciar extensões".
+
+3. Ative o "Modo do desenvolvedor"
+Dentro da página de extensões, procure pela opção "Modo do desenvolvedor" (geralmente fica no canto superior direito da tela) e clique na chave para ativá-lo.
+
+4. Clique em "Carregar sem pacote"
+Assim que você ativar o Modo do desenvolvedor, uma nova barra com opções vai aparecer. Clique no botão chamado "Carregar sem pacote" (Ou carregar sem compactação).
+
+5. Selecione a pasta da extensão
+Vai abrir uma janela para você procurar arquivos no seu computador. Encontre e selecione a pasta "ExtensãoV2" que está na mesma pasta que esse arquivo de texto.
+

@@ -57,9 +57,7 @@ const intervaloCheck = setInterval(() => {
 // }
 
 function verificarEExibirOverlay() {
-    // Se estiver em fullscreen, esperamos sair
     if (document.fullscreenElement) {
-        // Adiciona um ouvinte para quando sair da tela cheia
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement) {
                 mostrarOverlay();
@@ -81,11 +79,9 @@ async function detectarNomeAnime() {
 
         if (tituloNetflix) {
             console.log("MAL Reviewer: Nome extraído da Netflix:", tituloNetflix);
-            // Remove os colchetes decorativos 【 】 se existirem, para ajudar na busca do Jikan
             return tituloNetflix.replace(/[【】]/g, "").trim();
         }
 
-        // Caso não encontre nos elementos específicos, tenta uma busca geral por h4 e h2 no player
         let backup = document.querySelector('.video-title h4')?.innerText;
         if (backup) return backup.trim();
 
@@ -113,10 +109,10 @@ async function detectarNomeAnime() {
             return tituloAba.split(':')[0].trim();
         }
         
-        return null; // Se tudo falhar, o usuário digita
+        return null;
     }
 
-    // --- LÓGICA PARA DRIVE (Mantive para não quebrar) ---
+    // --- LÓGICA PARA DRIVE ---
     if (url.includes("drive.google.com")) {
         return document.title.replace(" - Google Drive", "").trim();
     }
@@ -130,7 +126,7 @@ function ehNomeGenerico(nome) {
     return n.length <= 3 || n.includes("season") || n.includes("temporada") || n.includes("episodios");
 }
 
-// 3. BUSCA DADOS (Igual ao popup, mas rodando no fundo)
+// 3. BUSCA DADOS
 function buscarDadosNoJikan(termo) {
     if(!termo) return;
     fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(termo)}&limit=1`)
@@ -138,18 +134,16 @@ function buscarDadosNoJikan(termo) {
         .then(data => {
             if(data.data && data.data.length > 0) {
                 animeDetectado = data.data[0];
-                // AQUI: Salva o total de episódios vindo do MyAnimeList
                 totalEpisodiosAnime = animeDetectado.episodes; 
                 console.log(`Anime: ${animeDetectado.title} | Total EPs: ${totalEpisodiosAnime}`);
             }
         });
 }
 
-// 4. INTERFACE INJETADA (O Overlay)
+
 function mostrarOverlay() {
     if (overlayCriado || !animeDetectado) return;
     
-    // Cria o HTML da janelinha
     let div = document.createElement('div');
     div.id = 'mal-overlay-container';
     div.innerHTML = `
@@ -173,19 +167,14 @@ function mostrarOverlay() {
     div.style.display = 'block';
     overlayCriado = true;
 
-    // Eventos
     div.querySelector('.close-btn').addEventListener('click', () => {
         div.style.display = 'none';
     });
 
     div.querySelector('#btnOpenExtension').addEventListener('click', () => {
-        // Como não podemos abrir o popup da extensão, vamos salvar no storage
-        // que queremos abrir o editor e alertar o usuário para clicar no ícone
         alert("Clique no ícone da extensão (quebra-cabeça) lá em cima para editar os detalhes!");
         div.style.display = 'none';
         
-        // Opcional: Aqui poderíamos expandir o overlay para mostrar os inputs
-        // Mas para simplificar, mandamos o usuário clicar no ícone já com os dados pré-carregados
         chrome.storage.local.set({
             'ultimoAnimeDetectado': animeDetectado.title
         });
@@ -194,11 +183,9 @@ function mostrarOverlay() {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "SOLICITAR_NOME_ANIME") {
-        // Cenário 1: Já temos o objeto animeDetectado do Jikan (Melhor caso)
         if (animeDetectado && animeDetectado.title) {
             sendResponse({ nome: animeDetectado.title });
         } 
-        // Cenário 2: Ainda não buscou no Jikan, mas a função detectarNomeAnime consegue pegar
         else {
             detectarNomeAnime().then(nomeEncontrado => {
                 sendResponse({ nome: nomeEncontrado });

@@ -62,11 +62,17 @@ function configurarOuvintes() {
             const termoTraduzido = await traduzirParaIngles(termoOriginal);
             
             // 2. Opcional: Atualiza o campo de texto para o usuário ver a tradução
-            // campoInput.value = termoTraduzido; 
+            campoInput.value = termoTraduzido; 
 
             // 3. Busca no Jikan
             console.log("Enviando para o Jikan:", termoTraduzido);
             buscarNoJikan(termoTraduzido, false);
+        }
+    });
+    document.getElementById('animeTitle').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Evita atualizar a janela
+            document.getElementById('btnBuscar').click(); // Simula o clique na lupa
         }
     });
     document.getElementById('btnSalvar').addEventListener('click', salvarDados);
@@ -232,7 +238,6 @@ function buscarNoJikan(termo, buscaAutomatica) {
             if (buscaAutomatica) {
                 let anime = data.data[0];
                 selecionarAnime(anime);
-                // NOVO: Verifica se já tem nota no MAL assim que acha automático
                 verificarNotaNoMAL(anime.mal_id);
                 return; 
             }
@@ -251,7 +256,6 @@ function buscarNoJikan(termo, buscaAutomatica) {
                 
                 div.addEventListener('click', () => {
                     selecionarAnime(anime);
-                    // NOVO: Verifica se já tem nota no MAL ao clicar
                     verificarNotaNoMAL(anime.mal_id);
                     listaDiv.style.display = 'none'; 
                 });
@@ -261,16 +265,19 @@ function buscarNoJikan(termo, buscaAutomatica) {
 }
 
 function selecionarAnime(anime) {
-    // 1. Preenche as informações básicas na interface
     document.getElementById('animeInfo').style.display = 'flex';
     document.getElementById('animeCapa').src = anime.images.jpg.image_url;
     document.getElementById('animeNomeOficial').innerText = anime.title;
     document.getElementById('malID').value = anime.mal_id;
     document.getElementById('animeTitle').value = anime.title;
+    
 
     let ano = anime.year || (anime.aired && anime.aired.prop && anime.aired.prop.from && anime.aired.prop.from.year) || "TBA";
     let estudio = (anime.studios && anime.studios.length > 0) ? " • " + anime.studios[0].name : "";
     document.getElementById('animeAno').innerText = ano + estudio;
+
+    document.getElementById('notaGlobalMAL').innerText = anime.score || "-";
+    document.getElementById('notaUsuarioMAL').innerText = "...";
 
     verificarDadosExistentes(anime.title, anime.mal_id);
 }
@@ -328,7 +335,6 @@ function enviarParaMAL(animeId, score, token, dados) {
 }
 
 function carregarDadosNaTela(dados, nomeSeTiver) {
-    // ESSA FUNÇÃO AGORA CHAMA A GERAÇÃO DINÂMICA PASSANDO OS DADOS SALVOS
     gerarInterfaceDinamica(dados);
 
     if (dados.capa) {
@@ -405,15 +411,15 @@ async function verificarNotaNoMAL(malId) {
         if (resp.ok) {
             const dados = await resp.json();
             if (dados.my_list_status) {
-                // Preenche nota oficial
+                 document.getElementById('notaUsuarioMAL').innerText = dados.my_list_status.score > 0 ? dados.my_list_status.score : "-";
                 let selMal = document.getElementById('notaMalOficial');
                 if(selMal) selMal.value = dados.my_list_status.score || 0;
 
                 if (dados.my_list_status.comments) {
                     processarComentarioParaPopup(dados.my_list_status.comments, malId);
-                    return true; // Achou review completa
+                    return true;
                 }
-                if (dados.my_list_status.score > 0) return true; // Achou pelo menos a nota
+                if (dados.my_list_status.score > 0) return true;
             }
         }
     } catch (e) { console.error("Erro API MAL:", e); }
@@ -467,13 +473,12 @@ function processarComentarioParaPopup(comentario, malId) {
 
 async function verificarDadosExistentes(titulo, malId) {
     const config = await chrome.storage.local.get(['syncMal', 'mal_access_token']);
-    const deveSync = config.syncMal !== false; // Padrão é true
+    const deveSync = config.syncMal !== false; 
 
     if (deveSync && config.mal_access_token && malId) {
         console.log("Prioridade MAL: Consultando API...");
         const achouNoMAL = await verificarNotaNoMAL(malId);
         
-        // Se o MAL retornar vazio (não tem comentário/nota lá), tenta o local como backup
         if (!achouNoMAL) {
             console.log("MAL vazio. Verificando se existe algo local...");
             buscarNoStorageLocal(titulo);
@@ -484,7 +489,6 @@ async function verificarDadosExistentes(titulo, malId) {
     }
 }
 
-// Função auxiliar para não repetir código
 function buscarNoStorageLocal(titulo) {
     chrome.storage.local.get([titulo], (res) => {
         if (res[titulo]) {
@@ -492,14 +496,13 @@ function buscarNoStorageLocal(titulo) {
             carregarDadosNaTela(res[titulo], titulo);
         } else {
             console.log("Nenhum dado encontrado para este anime.");
-            gerarInterfaceDinamica(); // Carrega critérios padrão
+            gerarInterfaceDinamica(); 
         }
     });
 }
 
 function verificarConexaoNecessaria() {
     chrome.storage.local.get(['syncMal', 'mal_access_token'], (res) => {
-        // Se a opção de sincronizar está ativa (ou é a primeira vez) E não tem token
         const sincronizacaoAtiva = res.syncMal !== false;
         
         if (sincronizacaoAtiva && !res.mal_access_token) {
@@ -511,7 +514,6 @@ function verificarConexaoNecessaria() {
 function verificarModoDeSalvamento() {
     chrome.storage.local.get(['syncMal', 'mal_access_token'], (res) => {
         const btn = document.getElementById('btnSalvar');
-        // Só muda para "SALVAR NO MAL" se tiver a opção ATIVA e o TOKEN presente
         if (res.syncMal !== false && res.mal_access_token) {
             btn.innerText = "SALVAR NO MAL";
             btn.style.background = "#2e51a2"; 
@@ -540,5 +542,5 @@ async function traduzirParaIngles(titulo) {
     } catch (e) {
         console.error("Falha na conexão com tradutor:", e);
     }
-    return titulo; // Fallback: retorna o original se o Google falhar
+    return titulo;
 }

@@ -1,6 +1,8 @@
-// Credenciais (Configurado como App "Web")
-const CLIENT_ID = '99af70589d12334cc55c2ffd92807197'; 
-const CLIENT_SECRET = '3e91cc1126b403cfa0ab4d11359078ad3d51daacdb064e24487f6cb2f887ffea';
+// Credenciais seguras (Configurado como App "Other")
+const CLIENT_ID = 'bbbe6e02d9d0140e9bad74dd1116d6b6'; 
+const REDIRECT_URI = chrome.identity.getRedirectURL(); 
+
+console.log("Sua Redirect URI é:", REDIRECT_URI);
 const REDIRECT_URI = chrome.identity.getRedirectURL(); 
 
 console.log("Sua Redirect URI é:", REDIRECT_URI);
@@ -52,9 +54,6 @@ async function iniciarLogin(sendResponse) {
             const tokenData = await trocarCodePorToken(code, storage.temp_verifier);
             
             if (tokenData && tokenData.access_token) {
-                // SALVANDO EM DOIS LUGARES:
-                // 1. mal_access_token para sua interface não desconectar no F5
-                // 2. mal_token_data para o background conseguir renovar o token depois
                 await chrome.storage.local.set({
                     'mal_access_token': tokenData.access_token,
                     'mal_token_data': {
@@ -78,7 +77,6 @@ async function trocarCodePorToken(code, verifier) {
     const url = 'https://myanimelist.net/v1/oauth2/token';
     const body = new URLSearchParams({
         client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
         code: code,
         code_verifier: verifier,
         grant_type: 'authorization_code',
@@ -99,7 +97,6 @@ async function refreshMalToken(refreshToken) {
     const url = 'https://myanimelist.net/v1/oauth2/token';
     const body = new URLSearchParams({
         client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
         grant_type: 'refresh_token',
         refresh_token: refreshToken
     });

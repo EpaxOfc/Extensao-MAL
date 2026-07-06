@@ -20,11 +20,18 @@
       
       <div id="listaResultados" class="lista-resultados"></div>
 
-      <div id="animeInfo" class="anime-card" style="display: none;">
-        <img id="animeCapa" src="" alt="Capa">
-        <div class="anime-details">
+      <div id="animeInfo" class="anime-card" style="display: none; flex-direction: row; align-items: flex-start; gap: 10px;">
+        <img id="animeCapa" src="" alt="Capa" style="max-width: 50px; border-radius: 4px;">
+        <div class="anime-details" style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
           <strong id="animeNomeOficial">Nome do Anime</strong>
-          <span id="animeAno" class="tag-ano">Ano</span>
+          <span id="animeAno" class="tag-ano" style="font-size: 11px; color: #aaa;">Ano</span>
+          
+          <div style="font-size: 11px; background: #2d2d33; padding: 4px 6px; border-radius: 4px; display: inline-block; margin-top: 2px;">
+              <span title="Nota Global do MAL" style="color: #f1c40f;">⭐ Global: <span id="notaGlobalMAL">-</span></span> 
+              <span style="color: #666; margin: 0 4px;">|</span> 
+              <span title="Sua Nota Atual no MAL" style="color: #6c5ce7;">👤 Sua Nota: <span id="notaUsuarioMAL">-</span></span>
+          </div>
+          
           <input type="hidden" id="malID">
         </div>
       </div>
