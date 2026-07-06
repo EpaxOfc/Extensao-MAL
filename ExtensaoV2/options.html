@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Configurações - MAL Reviewer</title>
+    <style>
+        body { background: #1a1a1d; color: white; font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+        h2 { color: #6c5ce7; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .section { background: #2d2d33; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        label { cursor: pointer; }
+        
+        /* Botão Login */
+        #btnLogin { background: #2e51a2; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #btnLogin:disabled { background: #444; cursor: default; }
+        
+        /* Checkbox bonito */
+        input[type=checkbox] { transform: scale(1.2); }
+        
+        .status { font-size: 12px; margin-top: 5px; }
+        .logged-in { color: #00b894; }
+        .logged-out { color: #ff7675; }
+    </style>
+</head>
+<body>
+
+    <h2>Integração MyAnimeList</h2>
+    
+    <!-- ÁREA DE LOGIN (Aparece se deslogado) -->
+    <div id="loginContainer" class="section">
+        <p>Para enviar as notas automaticamente, faça login.</p>
+        <button id="btnLogin">Conectar com MyAnimeList</button>
+        <p id="loginStatus" class="status logged-out">Desconectado</p>
+    </div>
+
+    <!-- ÁREA DE PERFIL (Hiddem por padrão, JS ativa como 'flex') -->
+    <div class="section" id="perfilArea" style="display: none; align-items: center; justify-content: space-between; gap: 15px;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <img id="userImg" src="" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #6c5ce7; object-fit: cover;">
+            <div>
+                <strong id="userName"></strong><br>
+                <span style="font-size: 12px; color: #00b894;">Conectado ao MyAnimeList</span>
+            </div>
+        </div>
+        <!-- Botão de Desvincular -->
+        <button id="btnLogout" style="background: #ff7675; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: bold;">Desvincular</button>
+    </div>
+
+    <h2>Preferências</h2>
+    <div class="section">
+        <h2 style="color: red;">Ao mudar as configurações clique em salvar no final da página</h2>
+        <div class="row">
+            <label for="autoOpen">Abrir janela automaticamente no fim do episódio</label>
+            <input type="checkbox" id="autoOpen" checked>
+        </div>
+
+        <div class="row">
+            <label for="syncMal">Sincronizar notas com o MAL</label>
+            <input type="checkbox" id="syncMal">
+        </div>
+
+        <div class="row">
+            <div style="max-width: 80%;">
+                <label for="officialScore">Usar Média Técnica como Nota Oficial</label>
+                <div style="font-size: 11px; color: #aaa;">
+                    Se marcado: A média (ex: 8.5) será arredondada (9) e enviada como nota principal.<br>
+                    Se desmarcado: A nota principal do MAL não é alterada.
+                </div>
+            </div>
+            <input type="checkbox" id="officialScore">
+        </div>
+    </div>
+
+    <h2>Critérios de Avaliação</h2>
+    <div class="section">
+        <div id="listaCriterios"></div>
+        <div class="row" style="margin-top:15px; gap: 10px;">
+            <input type="text" id="novoCriterio" placeholder="Ex: Trilha Sonora" style="flex-grow:1; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #1a1a1d; color: white;">
+            <button id="btnAddCriterio" style="background:#00b894; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">+ Adicionar</button>
+        </div>
+    </div>
+
+    <button id="btnSalvar" style="width:100%; padding: 12px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">Salvar Configurações</button>
+    <p id="msg" style="text-align: center; color: #00b894; font-weight: bold; height: 20px;"></p>
+
+    <script src="options.js"></script>
+</body>
+</html>

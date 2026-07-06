@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Minha Biblioteca de Animes</title>
+    <link rel="stylesheet" href="lista.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Minhas Avaliações Técnicas</h1>
+            <div class="search-bar">
+                <input type="text" id="filtroNome" placeholder="Pesquisar na minha lista...">
+                <select id="ordenarPor">
+                    <option value="recente">Mais Recentes</option>
+                    <option value="nota">Sua Nota (MAL)</option>
+                    <option value="media_tecnica">Média Técnica (Extensão)</option>
+                    <option value="nome">Ordem Alfabética</option>
+                </select>
+            </div>
+        </header>
+
+        <div id="gridAnimes" class="anime-grid">
+            <!-- Os cards aparecerão aqui -->
+        </div>
+    </div>
+
+    <div id="modalDetalhes" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <!-- O JS preenche aqui dentro: -->
+            <div id="detalhesConteudo"></div>
+        </div>
+    </div>
+
+    <script src="lista.js"></script>
+</body>
+</html>

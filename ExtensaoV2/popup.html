@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin:0;">MAL Notas</h3>
+        <button id="btnOptions" style="background:none; border:none; color:white; cursor:pointer; font-size:18px;">⚙️</button>
+    </header>
+
+    <!-- Área de Busca / Info do Anime -->
+    <div class="search-section">
+      <div class="input-group">
+        <input type="text" id="animeTitle" placeholder="Detectando anime...">
+        <button id="btnBuscar" title="Pesquisar manualmente">🔍</button>
+      </div>
+      
+      <div id="listaResultados" class="lista-resultados"></div>
+
+      <div id="animeInfo" class="anime-card" style="display: none;">
+        <img id="animeCapa" src="" alt="Capa">
+        <div class="anime-details">
+          <strong id="animeNomeOficial">Nome do Anime</strong>
+          <span id="animeAno" class="tag-ano">Ano</span>
+          <input type="hidden" id="malID">
+        </div>
+      </div>
+    </div>
+
+    <!-- Área de Notas DINÂMICA -->
+    <div id="containerNotasDinamico" class="criteria-grid">
+        <!-- O popup.js vai injetar os critérios aqui automaticamente -->
+    </div>
+
+    <!-- Rodapé com Média e Salvar -->
+    <div class="footer">
+      <div class="media-display">
+        <span>MÉDIA</span>
+        <h1 id="mediaFinal">0.00</h1>
+      </div>
+      <button id="btnSalvar">SALVAR REVIEW</button>
+    </div>
+
+    <button id="btnVerLista" style="width:100%; margin-top:10px; background:#2d2d33; color:white; border:1px solid #444; padding:5px; cursor:pointer; border-radius:5px; font-size:12px;">
+        📂 Ver Minha Biblioteca
+    </button>
+
+    <p id="status" class="status-msg"></p>
+  </div>
+
+  <!-- Modal de Aviso de Conexão -->
+  <div id="modalAvisoConexao" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; justify-content:center; align-items:center; padding:20px; text-align:center;">
+      <div style="background:#202024; padding:25px; border-radius:12px; border:1px solid #444; max-width:280px;">
+          <h3 style="margin-top:0; color:#6c5ce7;">Sincronização</h3>
+          <p style="font-size:13px; color:#ccc; line-height:1.5;">Você ainda não conectou sua conta do MyAnimeList.</p>
+          
+          <button id="btnIrParaLogin" style="width:100%; background:#2e51a2; color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; margin-bottom:10px;">Sincronizar com MAL</button>
+          
+          <button id="btnUsarLocal" style="width:100%; background:transparent; color:#aaa; border:1px solid #444; padding:8px; border-radius:6px; cursor:pointer; font-size:12px;">Usar apenas Localmente</button>
+      </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

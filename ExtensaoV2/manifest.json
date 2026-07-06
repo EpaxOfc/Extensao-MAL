@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "MAL Notas Extras",
+  "version": "6.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu/3WQV9Yj2A2J86lBj6Uil9P3mnRZmSiPIESkNlPG02auHH47VH+dUFhm4iadKugjn+sJyCdg2Dkx6FusSzkLzAceSlsHguUt7mOAO7LHFvhqFB4aYYyuuseMH1rwynfAHHcqa/FJkEQjZ4OQBUr1Fy3HuhhS54mUBXiu0X3rIBOKQDK3Oa6Adk2vNgiTKvv8BbmBNvPblaMOe7vLGp8fsn70Gm7N8lO2jHEl8leaGlRBKWcZjwAr0LVqLkMQqLAQEDXR9AqAg+Fks03gW7SaREBzOfavFGkB2yfgbkLhPSoEvPZUEO+noDTWIWVlu1s9w65v2oa3JGuwaO9ATBMnQIDAQAB",
+  "description": "Review automático com integração MAL.",
+  "permissions": ["storage", "activeTab", "scripting", "identity"],
+  "host_permissions": ["https://api.jikan.moe/*", "https://myanimelist.net/*", "https://api.myanimelist.net/*"],
+  "content_scripts": [
+    {
+      "matches": ["*://drive.google.com/*", "*://www.crunchyroll.com/*", "*://www.netflix.com/*"],
+      "js": ["content.js"],
+      "css": ["overlay.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["lista.html", "lista.js", "lista.css"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "icons": { "16": "icon.png", "48": "icon.png", "128": "icon.png" }
+}

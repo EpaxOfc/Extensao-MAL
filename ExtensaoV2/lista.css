@@ -1,0 +1,441 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+:root {
+    --bg: #121214;
+    --card-bg: #202024;
+    --modal-bg: #18181b;
+    --accent: #8257e5;
+    --accent-hover: #996dff;
+    --text: #e1e1e6;
+    --text-muted: #a8a8b3;
+    --border: #29292e;
+    --gold: #fba94c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 20px;
+}
+
+.container { max-width: 1100px; margin: auto; }
+
+/* HEADER */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.search-bar { display: flex; gap: 10px; }
+
+input, select {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 6px;
+    outline: none;
+}
+
+/* CARDS */
+.anime-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.anime-card {
+    background: var(--card-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.2s;
+    display: flex; flex-direction: column;
+}
+
+.anime-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+
+.card-capa { width: 100%; height: 300px; object-fit: cover; }
+
+.card-body { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.card-body h3 { margin: 0 0 8px 0; font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.card-footer {
+    background: #29292e;
+    padding: 10px 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-top: 1px solid var(--border);
+}
+
+.nota-media { font-size: 18px; font-weight: bold; color: var(--gold); }
+.tech-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
+
+/* --- MODAL (A CORREÇÃO ESTÁ AQUI) --- */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0; top: 0; width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.85);
+    backdrop-filter: blur(5px);
+    justify-content: center; align-items: center;
+}
+
+.modal-content {
+    background: var(--modal-bg);
+    width: 90%; max-width: 900px;
+    height: 600px; /* Altura fixa */
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    position: relative; /* Para o botão fechar */
+    overflow: hidden;
+}
+
+/* O container interno gerado pelo JS agora é quem manda no layout */
+#detalhesConteudo {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.modal-capa-container {
+    width: 300px;
+    height: 100%;
+    flex-shrink: 0;
+    background: #000;
+}
+
+.modal-img {
+    width: 100%; height: 100%; object-fit: cover; opacity: 0.9;
+}
+
+.modal-info {
+    flex-grow: 1;
+    padding: 30px;
+    overflow-y: auto; /* Scroll se o conteúdo for grande */
+    display: flex; 
+    flex-direction: column;
+}
+
+/* Scrollbar Customizada */
+.modal-info::-webkit-scrollbar { width: 8px; }
+.modal-info::-webkit-scrollbar-track { background: var(--modal-bg); }
+.modal-info::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+.close {
+    position: absolute;
+    right: 20px; top: 15px;
+    color: white; font-size: 30px; cursor: pointer;
+    z-index: 10;
+    line-height: 1;
+    background: rgba(0,0,0,0.5);
+    width: 40px; height: 40px;
+    text-align: center;
+    border-radius: 50%;
+}
+
+.modal-header h2 { margin: 0; font-size: 24px; color: white; margin-right: 40px; }
+.sub-header { color: var(--text-muted); font-size: 14px; margin-top: 5px; margin-bottom: 25px; }
+
+/* Status Box */
+/* --- AREA DE STATUS (TOPO MODAL) --- */
+.stats-row { 
+    display: flex; 
+    gap: 15px; 
+    margin-bottom: 30px; 
+    background: transparent; /* Removemos o fundo único */
+    border: none;
+    padding: 0;
+}
+
+.stat-box { 
+    flex: 1; 
+    text-align: center; 
+    padding: 15px 10px; 
+    background: #202024; /* Fundo individual */
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+
+.stat-box:hover { transform: translateY(-2px); border-color: #444; }
+
+.stat-box span { 
+    display: block; 
+    font-size: 11px; 
+    color: var(--text-muted); 
+    margin-bottom: 8px; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    font-weight: 600;
+}
+
+.stat-box strong { 
+    font-size: 26px; 
+    color: white; 
+    display: block;
+    line-height: 1;
+}
+
+/* Destaque para a Média Técnica */
+.stat-box.highlight { 
+    background: rgba(251, 169, 76, 0.08); /* Fundo dourado bem suave */
+    border-color: rgba(251, 169, 76, 0.3);
+}
+
+.stat-box.highlight strong { 
+    color: var(--gold); 
+    text-shadow: 0 0 15px rgba(251, 169, 76, 0.3);
+}
+
+/* --- MODO VISUALIZAÇÃO (Grid de Detalhes) --- */
+.view-mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Duas colunas */
+    gap: 12px;
+}
+
+.view-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #27272c;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    border-left: 3px solid var(--accent); /* Barrinha colorida na esquerda */
+    transition: background 0.2s;
+}
+
+.view-item:hover { background: #2e2e36; }
+
+.view-item span:first-child { 
+    color: #ccc; 
+    font-size: 13px; 
+    font-weight: 500;
+}
+
+.view-item span:last-child { 
+    font-weight: 700; 
+    color: white; 
+    font-size: 16px; 
+    background: rgba(255,255,255,0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+/* --- BOTÕES (Design Moderno) --- */
+.action-bar { 
+    margin-top: 25px; 
+    display: flex; 
+    justify-content: flex-end; 
+    gap: 12px;
+}
+
+.btn-primary {
+    background: var(--accent); 
+    color: white; 
+    border: none; 
+    padding: 10px 24px;
+    border-radius: 6px; 
+    font-weight: 600; 
+    cursor: pointer; 
+    font-size: 14px;
+    transition: all 0.2s ease;
+    display: flex; align-items: center; justify-content: center;
+}
+
+.btn-primary:hover { 
+    background: var(--accent-hover); 
+    box-shadow: 0 4px 12px rgba(130, 87, 229, 0.3);
+}
+
+.btn-secondary {
+    background: transparent; 
+    border: 1px solid var(--border); 
+    color: var(--text);
+    padding: 10px 20px; 
+    border-radius: 6px; 
+    cursor: pointer; 
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover { 
+    border-color: var(--accent); 
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* --- MODO EDIÇÃO --- */
+.edit-mode-container { display: none; }
+
+/* DESTAQUE DA NOTA OFICIAL (Agora usando ID específico) */
+#destaqueNotaMal {
+    background: linear-gradient(135deg, rgba(130, 87, 229, 0.15) 0%, rgba(130, 87, 229, 0.05) 100%);
+    border: 1px solid var(--accent);
+    padding: 10px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+#destaqueNotaMal label {
+    color: var(--accent-hover);
+    font-weight: 800;
+    font-size: 12px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#destaqueNotaMal select {
+    font-size: 16px; /* Nota bem grande */
+    font-weight: 800;
+    text-align: center;
+    height: 55px;
+    width: 90px; /* Largura fixa para ficar elegante */
+    margin: auto;
+    border: 2px solid var(--accent);
+    background: #121214;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* Grid para os Inputs Técnicos */
+#listaInputsTecnicos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+/* Inputs técnicos normais */
+.edit-row label { 
+    display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; margin-left: 2px;
+}
+
+.nota-select-modal { 
+    width: 100%; 
+    background: #18181b; 
+    border: 1px solid #333; 
+    color: white; 
+    padding: 0 12px;
+    height: 40px; 
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.nota-select-modal:focus { border-color: var(--accent); }
+
+/* Área de adicionar */
+.edit-row-add { display: flex; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border); }
+.edit-row-add input { flex: 1; background: #121214; border: 1px solid #333; padding: 10px; border-radius: 6px; color: white; }
+
+/* Botãozinho de + */
+#btnAddCriterio {
+    background: #333; color: white; border: none; width: 42px; border-radius: 6px; 
+    font-size: 20px; cursor: pointer; transition: 0.2s;
+}
+#btnAddCriterio:hover { background: var(--accent); }
+
+/* --- BOTÃO DE DELETAR CRITÉRIO --- */
+
+/* Agrupa o Select e o Botão na mesma linha */
+.input-group {
+    display: flex;
+    gap: 8px; /* Espaço entre o select e o botão */
+    align-items: center;
+}
+
+/* O Select ocupa todo o espaço disponível */
+.input-group .nota-select-modal {
+    flex: 1;
+}
+
+/* Estilo do botão de apagar */
+.btn-delete-crit {
+    background: rgba(231, 76, 60, 0.15); /* Fundo vermelho transparente */
+    color: #ff6b6b;
+    border: 1px solid #ff6b6b;
+    width: 40px;      /* Largura fixa */
+    height: 40px;     /* Mesma altura do input para alinhar */
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 22px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    padding-bottom: 4px; /* Ajuste fino para o X ficar centralizado */
+}
+
+.btn-delete-crit:hover {
+    background: #ff6b6b;
+    color: white;
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.4);
+}
+
+.info-mal {
+    display: flex;
+    gap: 10px;
+    margin-top: auto; /* Empurra para o final do card body */
+}
+
+.info-badge {
+    background: #29292e; /* Um pouco mais claro que o fundo do card */
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    transition: border-color 0.2s;
+}
+
+.info-badge:hover {
+    border-color: #444;
+}
+
+.info-badge .emoji {
+    font-size: 12px;
+}
+
+.info-badge .label {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 9px;
+}
+
+.info-badge .valor {
+    color: white;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+/* Destaque opcional para a sua nota pessoal */
+.info-badge.destaque {
+    border-left: 2px solid var(--accent);
+}
+
+.info-badge.destaque .valor {
+    color: var(--accent-hover);
+}

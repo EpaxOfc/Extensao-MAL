@@ -1,0 +1,252 @@
+:root {
+  --bg-color: #1a1a1d;
+  --card-bg: #2d2d33;
+  --accent: #6c5ce7;
+  --text: #ffffff;
+  --text-muted: #a4b0be;
+  --border: #444;
+}
+
+body {
+  width: 340px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  padding: 15px;
+}
+
+header h3 {
+  margin: 0 0 15px 0;
+  text-align: center;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* Área de Busca */
+.input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+input[type="text"] {
+  flex-grow: 1;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: white;
+  padding: 8px;
+  border-radius: 6px;
+  outline: none;
+}
+
+input[type="text"]:focus {
+  border-color: var(--accent);
+}
+
+#btnBuscar {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: white;
+  cursor: pointer;
+  border-radius: 6px;
+  width: 40px;
+  transition: 0.2s;
+}
+
+#btnBuscar:hover {
+  background: var(--accent);
+}
+
+/* Lista de Resultados da Busca */
+.lista-resultados {
+  position: absolute;
+  background: #25252b;
+  width: 300px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  display: none;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.item-resultado {
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #333;
+}
+
+.item-resultado:hover {
+  background: var(--accent);
+}
+
+.item-resultado img {
+  width: 30px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+/* Card do Anime Selecionado */
+.anime-card {
+  display: flex;
+  background: var(--card-bg);
+  padding: 10px;
+  border-radius: 8px;
+  gap: 12px;
+  margin-bottom: 15px;
+  border-left: 4px solid var(--accent);
+}
+
+#animeCapa {
+  width: 50px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.anime-details {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.anime-details strong {
+  font-size: 14px;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tag-ano {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: #111;
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+/* Grid de Notas */
+.criteria-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.criterio-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.criterio-box label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+select {
+  background: var(--card-bg);
+  color: white;
+  border: 1px solid var(--border);
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* Rodapé */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card-bg);
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.media-display span {
+  font-size: 10px;
+  color: var(--text-muted);
+  display: block;
+}
+
+.media-display h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #fdcb6e;
+}
+
+#btnSalvar {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+#btnSalvar:hover {
+  background: #5649c0;
+}
+
+.status-msg {
+  text-align: center;
+  font-size: 12px;
+  color: #00b894;
+  height: 15px;
+  margin-top: 5px;
+}
+
+/* Botão secundário para a Biblioteca */
+.btn-secundario {
+    width: 100%;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 8px;
+    margin-top: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.btn-secundario:hover {
+    background: var(--card-bg);
+    color: var(--text);
+    border-color: var(--accent);
+}
+
+/* Ajuste no Header para não empurrar os ícones */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
