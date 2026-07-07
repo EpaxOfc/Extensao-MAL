@@ -1,3 +1,30 @@
+// Função inteligente que detecta e cura qualquer corrupção de caracteres do MAL
+function normalizarCriterio(nome) {
+    if (!nome) return "";
+    let n = nome.trim();
+
+    const correcoes = [
+        { regex: /Dire.*(ced|amp|ccedil|tilde|ccedil|atilde).*o/i, sub: "Direção" },
+        { regex: /Anim.*(ced|amp|ccedil|tilde|ccedil|atilde).*o/i, sub: "Animação" },
+        { regex: /M.*(amp|acute|eacut|dia).*dia/i, sub: "Média" },
+        { regex: /Complexidade/i, sub: "Complexidade" },
+        { regex: /Enredo/i, sub: "Enredo" },
+        { regex: /Originalidade/i, sub: "Originalidade" },
+        { regex: /Design/i, sub: "Design" },
+        { regex: /Coreografia/i, sub: "Coreografia de luta" },
+        { regex: /Personagens/i, sub: "Personagens Principais" },
+        { regex: /Antagonista/i, sub: "Antagonista" },
+        { regex: /Fotografia/i, sub: "Direção de fotografia" }
+    ];
+
+    for (let c of correcoes) {
+        if (c.regex.test(n)) {
+            return c.sub;
+        }
+    }
+    return n; // Mantém intacto se for um critério personalizado do usuário
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     // Inicialização
     chrome.storage.local.get(['mal_access_token'], (res) => {
@@ -96,7 +123,7 @@ function processarComentario(texto) {
         const partes = linha.split(':');
         if (partes.length < 2) return;
 
-        let chave = partes[0].trim();
+        let chave = normalizarCriterio(partes[0]);
         if (mapaCorrecao[chave]) chave = mapaCorrecao[chave];
         chave = chave.replace(/[^\w\s\u00C0-\u00FF\/]/g, "").trim();
 
@@ -301,18 +328,31 @@ function ativarModoEdicao() {
     const containerInputs = document.getElementById('listaInputsTecnicos');
     containerInputs.innerHTML = "";
 
-    // Define quais critérios mostrar
-    let criterios = Object.keys(animeAtualModal.notasDetalhadas);
-    if (criterios.length === 0) {
-        criterios = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design", "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia"];
-    }
+    const defaultCriterios = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design", "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia"];
 
-    criterios.forEach(crit => {
-        let valor = animeAtualModal.notasDetalhadas[crit] || 0;
-        adicionarInputCriterio(containerInputs, crit, valor);
+    // 1. Busca os critérios globais salvos nas configurações
+    chrome.storage.local.get(['meusCriterios'], (res) => {
+        let listaFinal = res.meusCriterios || [...defaultCriterios];
+
+        // 2. Extrai os critérios que já possuem notas salvas no comentário deste anime
+        const criteriosNoAnime = Object.keys(animeAtualModal.notasDetalhadas);
+
+        // 3. Mesclagem inteligente: Adiciona os critérios personalizados deste anime na lista de edição,
+        // mas mantém visíveis os critérios globais padrão que ainda não foram preenchidos
+        criteriosNoAnime.forEach(crit => {
+            if (!listaFinal.includes(crit)) {
+                listaFinal.push(crit);
+            }
+        });
+
+        // 4. Desenha os campos de notas na tela para edição
+        listaFinal.forEach(crit => {
+            let valor = animeAtualModal.notasDetalhadas[crit] || 0;
+            adicionarInputCriterio(containerInputs, crit, valor);
+        });
+        
+        recalcularMediaEdicao();
     });
-    
-    recalcularMediaEdicao();
 }
 
 function cancelarEdicao() {
@@ -393,10 +433,11 @@ async function salvarNoMAL(id) {
     document.querySelectorAll('.input-calculo').forEach(sel => {
         let v = parseInt(sel.value);
         if (v > 0) {
-            coment += `\n${sel.getAttribute('data-criterio')}: ${v}`;
+            let critLimpo = normalizarCriterio(sel.getAttribute('data-criterio'));
+            coment += `\n${critLimpo}: ${v}`;
         }
     });
-    coment += `\nMédia: ${media}`;
+    coment += `\nMédia: ${media}`;;
 
     try {
         const res = await chrome.storage.local.get(['mal_access_token']);

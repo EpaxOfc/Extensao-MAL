@@ -4,9 +4,14 @@
   "version": "7.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu/3WQV9Yj2A2J86lBj6Uil9P3mnRZmSiPIESkNlPG02auHH47VH+dUFhm4iadKugjn+sJyCdg2Dkx6FusSzkLzAceSlsHguUt7mOAO7LHFvhqFB4aYYyuuseMH1rwynfAHHcqa/FJkEQjZ4OQBUr1Fy3HuhhS54mUBXiu0X3rIBOKQDK3Oa6Adk2vNgiTKvv8BbmBNvPblaMOe7vLGp8fsn70Gm7N8lO2jHEl8leaGlRBKWcZjwAr0LVqLkMQqLAQEDXR9AqAg+Fks03gW7SaREBzOfavFGkB2yfgbkLhPSoEvPZUEO+noDTWIWVlu1s9w65v2oa3JGuwaO9ATBMnQIDAQAB",
   "description": "Review automático com integração MAL.",
-  "permissions": ["storage", "activeTab", "scripting", "identity", "sidePanel"],
+  "permissions": ["storage", "activeTab", "scripting", "identity", "sidePanel", "tabs"],
   "side_panel": {
     "default_path": "popup.html"
+  },
+  "sidebar_action": {
+    "default_icon": "icon.png",
+    "default_title": "MAL Notas Extras",
+    "default_panel": "popup.html"
   },
   "host_permissions": ["https://api.jikan.moe/*", "https://myanimelist.net/*", "https://api.myanimelist.net/*"],
   "content_scripts": [

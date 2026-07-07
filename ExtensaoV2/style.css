@@ -1,3 +1,10 @@
+/* ==========================================================================
+   RESET GLOBAL E REGRAS DE SEGURANÇA DE DESIGN
+   ========================================================================== */
+* {
+  box-sizing: border-box; /* Impede que paddings e bordas estourem o tamanho da tela e cortem os cantos */
+}
+
 :root {
   --bg-color: #1a1a1d;
   --card-bg: #2d2d33;
@@ -8,31 +15,59 @@
 }
 
 body {
-  width: 340px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: var(--bg-color);
   color: var(--text);
   margin: 0;
   padding: 0;
+  overflow-x: hidden; /* Evita rolagem horizontal indesejada */
+}
+
+/* === CONFIGURAÇÕES DINÂMICAS DE EXIBIÇÃO === */
+
+/* Modo Popup (Tamanho Fixo Tradicional, sem cantos cortados) */
+body.popup-mode {
+  width: 340px;
+}
+
+/* Modo Barra Lateral / Side Panel (Totalmente Fluido e Ajustável) */
+body.sidepanel-mode {
+  width: 100%;
+  min-width: 250px; /* Impede que o design quebre se a barra for muito espremida */
+  min-height: 100vh;
 }
 
 .container {
   padding: 15px;
+  width: 100%;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  width: 100%;
 }
 
 header h3 {
-  margin: 0 0 15px 0;
-  text-align: center;
+  margin: 0;
   color: var(--accent);
   font-weight: 700;
   letter-spacing: 1px;
 }
 
 /* Área de Busca */
+.search-section {
+  position: relative; /* Define este container como ponto de ancoragem para os resultados absolutos */
+  width: 100%;
+}
+
 .input-group {
   display: flex;
   gap: 8px;
   margin-bottom: 10px;
+  width: 100%;
 }
 
 input[type="text"] {
@@ -43,6 +78,7 @@ input[type="text"] {
   padding: 8px;
   border-radius: 6px;
   outline: none;
+  width: 100%;
 }
 
 input[type="text"]:focus {
@@ -56,6 +92,7 @@ input[type="text"]:focus {
   cursor: pointer;
   border-radius: 6px;
   width: 40px;
+  flex-shrink: 0; /* Impede que o botão da lupa seja esmagado */
   transition: 0.2s;
 }
 
@@ -63,11 +100,13 @@ input[type="text"]:focus {
   background: var(--accent);
 }
 
-/* Lista de Resultados da Busca */
+/* Lista de Resultados da Busca (Otimizada para Escala Dinâmica) */
 .lista-resultados {
   position: absolute;
   background: #25252b;
-  width: 300px;
+  width: 100%; /* Acompanha dinamicamente 100% da largura do input group */
+  left: 0;
+  top: 100%; /* Posiciona perfeitamente colado abaixo do campo de busca */
   max-height: 200px;
   overflow-y: auto;
   z-index: 100;
@@ -106,6 +145,7 @@ input[type="text"]:focus {
   gap: 12px;
   margin-bottom: 15px;
   border-left: 4px solid var(--accent);
+  width: 100%;
 }
 
 #animeCapa {
@@ -113,12 +153,14 @@ input[type="text"]:focus {
   height: 70px;
   object-fit: cover;
   border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .anime-details {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  width: 100%;
 }
 
 .anime-details strong {
@@ -139,17 +181,26 @@ input[type="text"]:focus {
   width: fit-content;
 }
 
-/* Grid de Notas */
+/* Grid de Notas (Fluido e Responsivo) */
 .criteria-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-bottom: 15px;
+  width: 100%;
+}
+
+/* AJUSTE INTELIGENTE: Se a barra lateral estiver muito espremida, muda para 1 coluna */
+@media (max-width: 280px) {
+  .criteria-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .criterio-box {
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 .criterio-box label {
@@ -165,6 +216,7 @@ select {
   padding: 6px;
   border-radius: 6px;
   cursor: pointer;
+  width: 100%;
 }
 
 select:focus {
@@ -181,6 +233,7 @@ select:focus {
   padding: 10px 15px;
   border-radius: 8px;
   margin-top: 10px;
+  width: 100%;
 }
 
 .media-display span {
@@ -241,12 +294,4 @@ select:focus {
     background: var(--card-bg);
     color: var(--text);
     border-color: var(--accent);
-}
-
-/* Ajuste no Header para não empurrar os ícones */
-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
 }

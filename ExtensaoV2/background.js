@@ -179,17 +179,16 @@ async function executarEnvioMAL(payload, sendResponse) {
 }
 
 function configurarModoDeExibicao(mode) {
-    if (!chrome.sidePanel) {
-        console.warn("MAL Reviewer: A API sidePanel ainda não está disponível. Certifique-se de recarregar a extensão em chrome://extensions.");
-        return;
-    }
-
     if (mode === 'sidepanel') {
         chrome.action.setPopup({ popup: '' });
-        chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
+        if (chrome.sidePanel) {
+            chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
+        }
     } else {
         chrome.action.setPopup({ popup: 'popup.html' });
-        chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(console.error);
+        if (chrome.sidePanel) {
+            chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(console.error);
+        }
     }
 }
 

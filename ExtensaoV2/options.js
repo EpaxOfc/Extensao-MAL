@@ -1,5 +1,31 @@
 const criteriosPadrao = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design", "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia"];
 
+function normalizarCriterio(nome) {
+    if (!nome) return "";
+    let n = nome.trim();
+
+    const correcoes = [
+        { regex: /Dire.*(ced|amp|ccedil|tilde|ccedil|atilde).*o/i, sub: "Direção" },
+        { regex: /Anim.*(ced|amp|ccedil|tilde|ccedil|atilde).*o/i, sub: "Animação" },
+        { regex: /M.*(amp|acute|eacut|dia).*dia/i, sub: "Média" },
+        { regex: /Complexidade/i, sub: "Complexidade" },
+        { regex: /Enredo/i, sub: "Enredo" },
+        { regex: /Originalidade/i, sub: "Originalidade" },
+        { regex: /Design/i, sub: "Design" },
+        { regex: /Coreografia/i, sub: "Coreografia de luta" },
+        { regex: /Personagens/i, sub: "Personagens Principais" },
+        { regex: /Antagonista/i, sub: "Antagonista" },
+        { regex: /Fotografia/i, sub: "Direção de fotografia" }
+    ];
+
+    for (let c of correcoes) {
+        if (c.regex.test(n)) {
+            return c.sub;
+        }
+    }
+    return n; // Mantém intacto se for um critério personalizado do usuário
+}
+
 // Listas de controle para a barra de salvamento (Estilo Discord)
 let criteriosOriginais = [];
 let criteriosTemporarios = [];
@@ -39,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
             chrome.storage.local.remove(['mal_access_token', 'mal_token_data'], () => {
                 atualizarInterfaceLogin(false);
                 verificarExibicaoBotoesBatch();
-                alert("Conta desconectada com sucesso!");
             });
         }
     });
@@ -64,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Ouvinte para adicionar novos critérios (Adiciona apenas na lista Temporária)
     document.getElementById('btnAddCriterio').addEventListener('click', () => {
         let nome = document.getElementById('novoCriterio').value.trim();
         if (nome) {
@@ -86,20 +110,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Carrega preferências salvas
 function carregarConfig() {
-    chrome.storage.local.get(['autoOpen', 'syncMal', 'officialScore'], (res) => {
+    chrome.storage.local.get(['autoOpen', 'syncMal', 'officialScore', 'viewMode'], (res) => {
         document.getElementById('viewMode').addEventListener('change', (e) => {
             const mode = e.target.value;
             chrome.storage.local.set({ viewMode: mode }, () => {
                 aplicarModoDeExibicao(mode);
             });
         });
+
+        // --- DETECÇÃO DO OPERA / OPERA GX ---
+        const isOpera = navigator.userAgent.includes("OPR") || navigator.userAgent.includes("Opera");
+        if (isOpera) {
+            const optSidepanel = document.querySelector('#viewMode option[value="sidepanel"]');
+            if (optSidepanel) {
+                optSidepanel.disabled = true;
+                optSidepanel.textContent = "Barra Lateral (Não suportado no Opera)";
+            }
+            
+            const helpText = document.getElementById('viewModeHelp');
+            if (helpText) {
+                helpText.style.display = 'block';
+                helpText.innerHTML = "⚠️ No Opera GX, a barra lateral já funciona pelo ícone azul na <b>esquerda</b>. Deixe esta opção em 'Popup' para o botão do topo direito também funcionar.";
+            }
+            
+            if (res.viewMode === 'sidepanel') {
+                chrome.storage.local.set({ viewMode: 'popup' });
+                aplicarModoDeExibicao('popup');
+                res.viewMode = 'popup';
+            }
+        }
+
         document.getElementById('autoOpen').checked = res.autoOpen ?? true;
         document.getElementById('syncMal').checked = res.syncMal ?? true;
         document.getElementById('officialScore').checked = res.officialScore ?? false;
         
         verificarExibicaoBotoesBatch();
         
-        carregarModoDeExibicaoSalvo();
+        document.getElementById('viewMode').value = res.viewMode || 'popup';
     });
 }
 
@@ -413,7 +460,7 @@ async function restaurarNotasOriginais() {
     });
 }
 
-// NOVO: Função que lê os critérios escritos no comentário INDIVIDUAL de forma dinâmica
+// Lê os critérios do comentário individual, cura as chaves corrompidas e calcula a média de forma segura
 function recalcularMediaDoComentario(texto) {
     if (!texto) return null;
 
@@ -428,12 +475,10 @@ function recalcularMediaDoComentario(texto) {
     linhas.forEach(linha => {
         linha = inlineTrim(linha);
         
-        // Ignora a linha de cabeçalho, linhas em branco ou a linha que já contém a Média escrita anteriormente
         if (!linha || linha.toLowerCase().includes("review") || linha.toLowerCase().match(/^(média|media|average|meacutedia):/i)) {
             return;
         }
 
-        // Procura pelo padrão "Nome do Critério: Nota"
         const match = linha.match(/^(.+?):\s*(\d+(?:[.,]\d+)?)/);
         if (match) {
             let valor = parseFloat(match[2].replace(',', '.'));
@@ -453,28 +498,28 @@ function recalcularMediaDoComentario(texto) {
     };
 }
 
-// NOVO: Atualiza ou insere a linha de média mantendo o restante do comentário original intacto
+// Reconstrói o bloco de comentários de forma 100% limpa, curando a corrupção de caracteres no MAL
 function atualizarLinhaDeMediaNoComentario(comentarioOriginal, novaMediaFormatada) {
     const linhas = comentarioOriginal.split('\n');
-    let indiceMedia = -1;
+    let listStr = "";
 
-    for (let i = 0; i < linhas.length; i++) {
-        if (linhas[i].toLowerCase().match(/^(média|media|average|meacutedia):/i)) {
-            indiceMedia = i;
-            break;
+    linhas.forEach(linha => {
+        linha = inlineTrim(linha);
+        if (!linha || linha.toLowerCase().includes("review") || linha.toLowerCase().match(/^(média|media|average|meacutedia):/i)) {
+            return;
         }
-    }
 
-    if (indiceMedia !== -1) {
-        // Se a linha de média já existir, atualiza mantendo o termo exato (ex: "Média:" ou "Media:")
-        const partes = linhas[indiceMedia].split(':');
-        linhas[indiceMedia] = `${partes[0]}: ${novaMediaFormatada}`;
-    } else {
-        // Se não existir, insere no final
-        linhas.push(`Média: ${novaMediaFormatada}`);
-    }
+        const match = linha.match(/^(.+?):\s*(\d+(?:[.,]\d+)?)/);
+        if (match) {
+            let valor = parseFloat(match[2].replace(',', '.'));
+            if (valor > 0 && valor <= 10) {
+                let cleanKey = normalizarCriterio(match[1]); // Cura o critério na hora de remontar
+                listStr += `\n${cleanKey}: ${valor}`;
+            }
+        }
+    });
 
-    return linhas.join('\n');
+    return `Review Técnica:${listStr}\nMédia: ${novaMediaFormatada}`;
 }
 
 function carregarModoDeExibicaoSalvo() {

@@ -1,3 +1,33 @@
+// Função inteligente que detecta e cura qualquer corrupção de caracteres do MAL
+function normalizarCriterio(nome) {
+    if (!nome) return "";
+    let n = nome.trim();
+
+    const correcoes = [
+        { regex: /Dire.*(ced|amp|ccedil|tilde|ccedil|atilde).*o/i, sub: "Direção" },
+        { regex: /Anim.*(ced|amp|ccedil|tilde|ccedil|atilde).*o/i, sub: "Animação" },
+        { regex: /M.*(amp|acute|eacut|dia).*dia/i, sub: "Média" },
+        { regex: /Complexidade/i, sub: "Complexidade" },
+        { regex: /Enredo/i, sub: "Enredo" },
+        { regex: /Originalidade/i, sub: "Originalidade" },
+        { regex: /Design/i, sub: "Design" },
+        { regex: /Coreografia/i, sub: "Coreografia de luta" },
+        { regex: /Personagens/i, sub: "Personagens Principais" },
+        { regex: /Antagonista/i, sub: "Antagonista" },
+        { regex: /Fotografia/i, sub: "Direção de fotografia" }
+    ];
+
+    for (let c of correcoes) {
+        if (c.regex.test(n)) {
+            return c.sub;
+        }
+    }
+    return n;
+}
+
+let ultimoNomeIniciado = ""; 
+let timerDetectar = null;   
+
 document.addEventListener('DOMContentLoaded', function() {
     // Botão de Configurações
     document.getElementById('btnOptions').addEventListener('click', () => {
@@ -5,27 +35,70 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     verificarModoDeSalvamento();
-    verificarConexaoNecessaria()
+    verificarConexaoNecessaria();
     configurarOuvintes();
 
-    chrome.storage.local.get(['syncMal'], (res) => {
+    chrome.storage.local.get(['syncMal', 'viewMode'], (res) => {
         if (res.syncMal) {
             const btn = document.getElementById('btnSalvar');
             btn.innerText = "SALVAR NO MAL";
-            // Opcional: Mudar cor para azul do MAL para indicar visualmente
-             btn.style.background = "#2e51a2"; 
+            btn.style.background = "#2e51a2"; 
         }
+
+        // Identifica o modo e adiciona a classe correta de dimensionamento no body
+        const mode = res.viewMode || 'popup';
+        document.body.classList.remove('popup-mode', 'sidepanel-mode');
+        document.body.classList.add(mode + '-mode');
     });
 
-    // 1. Tenta recuperar anime do monitoramento automático
+    iniciarRapido();
+});
+
+chrome.tabs.onActivated.addListener(iniciarLento);
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (tab.active && (changeInfo.url || changeInfo.status === 'complete')) {
+        iniciarLento();
+    }
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        iniciarRapido();
+    }
+});
+
+function debouncedDetectar(tempoEspera) {
+    clearTimeout(timerDetectar);
+    timerDetectar = setTimeout(() => {
+        detectarEIniciar();
+    }, tempoEspera);
+}
+
+function iniciarRapido() {
+    debouncedDetectar(150);
+}
+
+function iniciarLento() {
+    debouncedDetectar(5000);
+}
+
+function detectarEIniciar() {
+    if (document.hidden) {
+        return;
+    }
+
     chrome.storage.local.get(['ultimoAnimeDetectado'], function(result) {
         if (result.ultimoAnimeDetectado) {
             iniciar(result.ultimoAnimeDetectado);
             chrome.storage.local.remove('ultimoAnimeDetectado');
         } else {
-            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            chrome.tabs.query({active: true, lastFocusedWindow: true}, function(tabs) {
                 let activeTab = tabs[0];
-                if (!activeTab || !activeTab.url) return;
+                if (!activeTab || !activeTab.url) {
+                    iniciar("");
+                    return;
+                }
                 
                 let url = activeTab.url;
 
@@ -48,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
-});
+}
 
 function configurarOuvintes() {
     document.getElementById('btnBuscar').addEventListener('click', async function() {
@@ -57,22 +130,15 @@ function configurarOuvintes() {
 
         if (termoOriginal.length > 2) {
             console.log("Botão lupa clicado. Processando...");
-            
-            // 1. Traduz
             const termoTraduzido = await traduzirParaIngles(termoOriginal);
-            
-            // 2. Opcional: Atualiza o campo de texto para o usuário ver a tradução
             campoInput.value = termoTraduzido; 
-
-            // 3. Busca no Jikan
-            console.log("Enviando para o Jikan:", termoTraduzido);
             buscarNoJikan(termoTraduzido, false);
         }
     });
     document.getElementById('animeTitle').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
-            e.preventDefault(); // Evita atualizar a janela
-            document.getElementById('btnBuscar').click(); // Simula o clique na lupa
+            e.preventDefault(); 
+            document.getElementById('btnBuscar').click(); 
         }
     });
     document.getElementById('btnSalvar').addEventListener('click', salvarDados);
@@ -80,7 +146,6 @@ function configurarOuvintes() {
         chrome.tabs.create({ url: 'lista.html' });
     });
 
-    // --- BOTÕES DO MODAL DE AVISO ---
     const btnLogin = document.getElementById('btnIrParaLogin');
     if (btnLogin) {
         btnLogin.addEventListener('click', () => {
@@ -101,6 +166,12 @@ function configurarOuvintes() {
 }
 
 async function iniciar(nomeInicial) {
+    // Filtro de memória que previne buscas idênticas duplicadas
+    if (nomeInicial === ultimoNomeIniciado) {
+        return; 
+    }
+    ultimoNomeIniciado = nomeInicial;
+
     document.getElementById('animeTitle').value = nomeInicial;
 
     const termosProibidos = ["Anata no wo", "Eigakan", "Netflix"];
@@ -110,15 +181,12 @@ async function iniciar(nomeInicial) {
         nomeInicial = ""; 
     }
     
-    // Tenta carregar localmente com o nome original (chave do banco)
     chrome.storage.local.get([nomeInicial], async function(result) {
         if (result[nomeInicial]) {
             carregarDadosNaTela(result[nomeInicial], nomeInicial);
         } else {
             gerarInterfaceDinamica();
             if(nomeInicial && nomeInicial.length > 2) {
-                // --- AQUI ENTRA A TRADUÇÃO ---
-                // Traduzimos para o inglês para garantir que o Jikan encontre
                 const nomeParaBusca = await traduzirParaIngles(nomeInicial);
                 buscarNoJikan(nomeParaBusca, true);
             }
@@ -126,34 +194,29 @@ async function iniciar(nomeInicial) {
     });
 }
 
-// GERA OS SELECTS DINAMICAMENTE
 function gerarInterfaceDinamica(dadosSalvos = null) {
     const container = document.getElementById('containerNotasDinamico');
     const defaultCriterios = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design", "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia"];
 
     if (!container) return;
 
-    // Função interna para desenhar
     const desenharInputs = (listaCriterios) => {
         container.innerHTML = ""; 
-        
-        // FILTRO DE SEGURANÇA: Remove 'Média', 'media', 'Meacutedia' da lista de inputs
         listaCriterios = listaCriterios.filter(c => !c.toLowerCase().match(/^(média|media|meacutedia|nota_mal)$/));
 
         listaCriterios.forEach(crit => {
-            // Cria ID limpo para o HTML
             let idLimpo = "nota_" + crit.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '_');
             
             let box = document.createElement('div');
             box.className = "criterio-box";
             
             let label = document.createElement('label');
-            label.textContent = crit; // Exibe o nome correto com acento
+            label.textContent = crit; 
             
             let sel = document.createElement('select');
             sel.id = idLimpo;
             sel.className = "nota-select";
-            sel.setAttribute('data-criterio', crit); // Guarda o nome original
+            sel.setAttribute('data-criterio', crit);
 
             let optDefault = document.createElement('option');
             optDefault.value = "0";
@@ -165,7 +228,6 @@ function gerarInterfaceDinamica(dadosSalvos = null) {
                 opt.value = i.toString();
                 opt.textContent = i.toFixed(1);
                 
-                // Marca selecionado se houver dados salvos
                 if (dadosSalvos && (dadosSalvos[crit] == i || dadosSalvos[crit] == i.toString())) {
                     opt.selected = true;
                 }
@@ -178,7 +240,6 @@ function gerarInterfaceDinamica(dadosSalvos = null) {
             container.appendChild(box);
         });
         
-        // Se tiver Nota Oficial salva (do MAL), preenche o select lá de cima
         if (dadosSalvos && dadosSalvos.nota_mal) {
             let selMal = document.getElementById('notaMalOficial');
             if(selMal) selMal.value = dadosSalvos.nota_mal;
@@ -187,20 +248,21 @@ function gerarInterfaceDinamica(dadosSalvos = null) {
         calcularMediaInteligente();
     };
 
-    if (dadosSalvos) {
-        // Pega as chaves que não são metadados
-        const chavesIgnorar = ['media', 'mal_id', 'capa', 'nome_oficial', 'nota_mal'];
-        const criteriosEncontrados = Object.keys(dadosSalvos).filter(k => !chavesIgnorar.includes(k));
-
-        if (criteriosEncontrados.length > 0) {
-            desenharInputs(criteriosEncontrados);
-            return;
-        }
-    }
-
-    // Padrão
     chrome.storage.local.get(['meusCriterios'], (res) => {
-        const listaFinal = res.meusCriterios || defaultCriterios;
+        let listaFinal = res.meusCriterios || [...defaultCriterios];
+
+        if (dadosSalvos) {
+            const chavesIgnorar = ['media', 'mal_id', 'capa', 'nome_oficial', 'nota_mal'];
+            const criteriosEncontrados = Object.keys(dadosSalvos).filter(k => !chavesIgnorar.includes(k));
+            
+            // Adiciona quaisquer critérios antigos salvos na obra que por acaso não estejam na sua configuração de critérios global
+            criteriosEncontrados.forEach(crit => {
+                if (!listaFinal.includes(crit)) {
+                    listaFinal.push(crit);
+                }
+            });
+        }
+
         desenharInputs(listaFinal);
     });
 }
@@ -230,10 +292,18 @@ function buscarNoJikan(termo, buscaAutomatica) {
     }
 
     fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(termo)}&limit=5`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
+            return response.json();
+        })
         .then(data => {
             listaDiv.innerHTML = ''; 
-            if (!data.data || data.data.length === 0) return;
+            if (!data.data || data.data.length === 0) {
+                if (!buscaAutomatica) {
+                    listaDiv.innerHTML = '<div style="padding:10px; color:#ff7675;">Nenhum anime encontrado.</div>';
+                }
+                return;
+            }
             
             if (buscaAutomatica) {
                 let anime = data.data[0];
@@ -261,6 +331,12 @@ function buscarNoJikan(termo, buscaAutomatica) {
                 });
                 listaDiv.appendChild(div);
             });
+        })
+        .catch(err => {
+            console.error("MAL Reviewer: Erro ao buscar no Jikan:", err);
+            if (!buscaAutomatica) {
+                listaDiv.innerHTML = '<div style="padding:10px; color:#ff7675;">Erro na conexão. Tente novamente.</div>';
+            }
         });
 }
 
@@ -271,7 +347,6 @@ function selecionarAnime(anime) {
     document.getElementById('malID').value = anime.mal_id;
     document.getElementById('animeTitle').value = anime.title;
     
-
     let ano = anime.year || (anime.aired && anime.aired.prop && anime.aired.prop.from && anime.aired.prop.from.year) || "TBA";
     let estudio = (anime.studios && anime.studios.length > 0) ? " • " + anime.studios[0].name : "";
     document.getElementById('animeAno').innerText = ano + estudio;
@@ -281,7 +356,6 @@ function selecionarAnime(anime) {
 
     verificarDadosExistentes(anime.title, anime.mal_id);
 }
-
 
 function salvarDados() {
     let nomeChave = document.getElementById('animeTitle').value;
@@ -324,7 +398,8 @@ function enviarParaMAL(animeId, score, token, dados) {
     let listStr = "";
     for (let key in dados) {
         if (!['media','mal_id','capa','nome_oficial'].includes(key) && dados[key] > 0) {
-            listStr += `\n${key}: ${dados[key]}`;
+            let cleanKey = normalizarCriterio(key); // Cura a chave antes de mandar pro MAL
+            listStr += `\n${cleanKey}: ${dados[key]}`;
         }
     }
     let coment = `Review Técnica:${listStr}\nMédia: ${dados.media}`;
@@ -343,43 +418,6 @@ function carregarDadosNaTela(dados, nomeSeTiver) {
         document.getElementById('animeNomeOficial').innerText = dados.nome_oficial || nomeSeTiver;
         document.getElementById('malID').value = dados.mal_id;
     }
-}
-
-// --- UTIL ---
-function lerCaminhoDoDrivePagina() {
-    let tituloAba = document.title.replace(" - Google Drive", "").trim();
-
-    let elementos = Array.from(document.querySelectorAll('div[role="navigation"] [role="link"], div[role="navigation"] button, div[role="main"] h2'));
-    
-    let nomes = elementos
-        .map(el => el.innerText.trim())
-        .filter(t => t.length > 1 && t.length < 50 && !t.includes("Feedback") && !t.includes("Acessibilidade"));
-
-    return nomes.length > 0 ? nomes : [tituloAba];
-}
-
-function processarCaminhoDrive(listaNomes, tituloAba) {
-    const termosLixo = ["Meu Drive", "My Drive", "Computadores", "Recentes", "Feedback", "Acessibilidade", "Google", "Drive"];
-    
-    let nomesValidos = listaNomes.filter(n => {
-        return !termosLixo.some(lixo => n.toLowerCase().includes(lixo.toLowerCase()));
-    });
-
-    if (nomesValidos.length === 0) return limparTitulo(tituloAba);
-
-    let nomeAtual = nomesValidos[nomesValidos.length - 1];
-
-    if (nomeAtual.includes(".")) return limparTitulo(nomeAtual);
-
-    const regexTemp = /(^|[ \-_])(t|s|season|temporada|parte|part|p|vol|volume)[ \.\-_]?\d+/i;
-    const ehTemporada = regexTemp.test(nomeAtual) || (nomeAtual.length <= 4 && /\d/.test(nomeAtual));
-
-    if (ehTemporada && nomesValidos.length > 1) {
-        let nomePai = nomesValidos[nomesValidos.length - 2];
-        return `${nomePai} ${nomeAtual}`;
-    }
-
-    return nomeAtual;
 }
 
 function limparTitulo(t) {
@@ -401,10 +439,7 @@ function limparTitulo(t) {
 
 async function verificarNotaNoMAL(malId) {
     const res = await chrome.storage.local.get(['mal_access_token']);
-    if (!res.mal_access_token) {
-        document.getElementById('notaUsuarioMAL').innerText = "-";
-        return false;
-    }
+    if (!res.mal_access_token) return false;
 
     try {
         const resp = await fetch(`https://api.myanimelist.net/v2/anime/${malId}?fields=my_list_status{score,comments}`, {
@@ -437,7 +472,6 @@ async function verificarNotaNoMAL(malId) {
 }
 
 function processarComentarioParaPopup(comentario, malId) {
-    // Decodificação segura utilizando parser HTML do navegador (evita injeção)
     const parser = new DOMParser();
     const doc = parser.parseFromString(comentario, 'text/html');
     const textoDecodificado = doc.documentElement.textContent || "";
@@ -456,9 +490,9 @@ function processarComentarioParaPopup(comentario, malId) {
     const regex = /^(.+?):\s*(\d+(?:[.,]\d+)?)/;
 
     linhas.forEach(linha => {
-        let match = linha.match(regex);
+        let match = inlineTrim(linha).match(regex);
         if (match) {
-            let chave = match[1].trim();
+            let chave = normalizarCriterio(match[1]);
             
             if (mapaCorrecao[chave]) chave = mapaCorrecao[chave];
 
@@ -474,7 +508,6 @@ function processarComentarioParaPopup(comentario, malId) {
         }
     });
 
-    // Se achou critérios, desenha a tela
     if (Object.keys(dadosRecuperados).length > 1) { 
         let nomeOficial = document.getElementById('animeNomeOficial').innerText;
         carregarDadosNaTela(dadosRecuperados, nomeOficial);
@@ -538,21 +571,25 @@ async function traduzirParaIngles(titulo) {
     if (titulo.length < 3) return titulo;
 
     try {
-        console.log("Tentando traduzir:", titulo); // Debug
+        console.log("Tentando traduzir:", titulo); 
         const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(titulo)}`;
         
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
         const data = await response.json();
         
         if (data && data[0] && data[0][0] && data[0][0][0]) {
             const resultado = data[0][0][0];
-            console.log("Tradução concluída:", resultado); // Debug
+            console.log("Tradução concluída:", resultado); 
             return resultado;
         }
     } catch (e) {
-        console.warn("Falha na conexão com tradutor:", e);
+        console.error("Falha na conexão com tradutor:", e);
     }
     return titulo;
+}
+
+function inlineTrim(str) {
+    return str ? str.trim() : "";
 }

@@ -197,12 +197,17 @@
             <input type="checkbox" id="syncMal">
         </div>
 
-        <div class="row">
-            <label for="viewMode">Visualização da extensão:</label>
-            <select id="viewMode" style="background: #1a1a1d; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; cursor: pointer;">
-                <option value="popup">Balão Popup (Padrão)</option>
-                <option value="sidepanel">Barra Lateral (Side Panel)</option>
-            </select>
+        <!-- Bloco de Visualização Atualizado com o Elemento de Aviso Dinâmico -->
+        <div class="row" style="flex-direction: column; align-items: flex-start; gap: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <label for="viewMode">Visualização da extensão:</label>
+                <select id="viewMode" style="background: #1a1a1d; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; cursor: pointer;">
+                    <option value="popup">Balão Popup (Padrão)</option>
+                    <option value="sidepanel">Barra Lateral (Side Panel)</option>
+                </select>
+            </div>
+            <!-- Texto de ajuda dinâmico exibido apenas no Opera/Opera GX -->
+            <div id="viewModeHelp" style="font-size: 11px; color: #ff7675; line-height: 1.4; display: none; margin-top: 5px; font-weight: bold;"></div>
         </div>
 
         <div class="row" style="margin-bottom: 5px;">
