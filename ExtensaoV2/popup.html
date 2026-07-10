@@ -20,37 +20,47 @@
       
       <div id="listaResultados" class="lista-resultados"></div>
 
+      <div id="correctionModeContainer" style="display: none; background: rgba(255, 118, 117, 0.1); border: 1px solid #ff7675; padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+          <p style="font-size: 13px; color: #ff7675; margin: 0 0 8px 0; font-weight: bold;">⚠️ Modo de Correção Ativo</p>
+          <p style="font-size: 11px; color: #ddd; margin: 0 0 12px 0;">Escreva o nome do anime correto, clique na lupa (ou aperte Enter) e selecione o anime na lista abaixo.</p>
+          <button id="btnCancelCorrection" style="background: #2d2d33; color: white; border: 1px solid #444; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: 0.2s;">Cancelar Busca</button>
+      </div>
+
       <div id="animeInfo" class="anime-card" style="display: none; flex-direction: row; align-items: flex-start; gap: 10px;">
         <img id="animeCapa" src="" alt="Capa" style="max-width: 50px; border-radius: 4px;">
         <div class="anime-details" style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
           <strong id="animeNomeOficial">Nome do Anime</strong>
           <span id="animeAno" class="tag-ano" style="font-size: 11px; color: #aaa;">Ano</span>
+          <span id="epAssistindo" style="font-size: 11px; color: #6c5ce7; font-weight: bold; margin-top: 2px; display: none;"></span>
           
-          <div style="font-size: 11px; background: #2d2d33; padding: 4px 6px; border-radius: 4px; display: inline-block; margin-top: 2px;">
-              <span title="Nota Global do MAL" style="color: #f1c40f;">⭐ Global: <span id="notaGlobalMAL">-</span></span> 
-              <span style="color: #666; margin: 0 4px;">|</span> 
-              <span title="Sua Nota Atual no MAL" style="color: #6c5ce7;">👤 Sua Nota: <span id="notaUsuarioMAL">-</span></span>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; font-weight: bold; margin-top: 10px;">
+              <span style="background: rgba(241, 196, 15, 0.15); color: #f1c40f; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+                  ⭐ Global: <span id="notaGlobalMAL">-</span>
+              </span>
+              <span style="background: rgba(155, 89, 182, 0.15); color: #9b59b6; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+                  👤 Sua Nota: <span id="notaUsuarioMAL">-</span>
+              </span>
+              <span style="background: rgba(0, 184, 148, 0.15); color: #00b894; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+                  🛠️ Técnica: <span id="notaTecnicaHeader">-</span>
+              </span>
           </div>
           
           <input type="hidden" id="malID">
         </div>
       </div>
     </div>
-
-    <!-- Área de Notas DINÂMICA -->
-    <div id="containerNotasDinamico" class="criteria-grid">
-        <!-- O popup.js vai injetar os critérios aqui automaticamente -->
-    </div>
-
-    <!-- Rodapé com Média e Salvar -->
-    <div class="footer">
-      <div class="media-display">
-        <span>MÉDIA</span>
-        <h1 id="mediaFinal">0.00</h1>
+    <div id="areaDeAvaliacao">
+      <!-- Área de Notas DINÂMICA -->
+      <div id="containerNotasDinamico" class="criteria-grid">
       </div>
-      <button id="btnSalvar">SALVAR REVIEW</button>
+      <div class="footer">
+        <div class="media-display">
+          <span>MÉDIA</span>
+          <h1 id="mediaFinal">0.00</h1>
+        </div>
+        <button id="btnSalvar">SALVAR REVIEW</button>
+      </div>
     </div>
-
     <button id="btnVerLista" style="width:100%; margin-top:10px; background:#2d2d33; color:white; border:1px solid #444; padding:5px; cursor:pointer; border-radius:5px; font-size:12px;">
         📂 Ver Minha Biblioteca
     </button>

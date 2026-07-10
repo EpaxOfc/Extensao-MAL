@@ -1,4 +1,3 @@
-// Função inteligente que detecta e cura qualquer corrupção de caracteres do MAL
 function normalizarCriterio(nome) {
     if (!nome) return "";
     let n = nome.trim();
@@ -22,11 +21,10 @@ function normalizarCriterio(nome) {
             return c.sub;
         }
     }
-    return n; // Mantém intacto se for um critério personalizado do usuário
+    return n;
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Inicialização
     chrome.storage.local.get(['mal_access_token'], (res) => {
         if (res.mal_access_token) {
             carregarListaCompleta(res.mal_access_token);
@@ -35,11 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Filtros
     document.getElementById('filtroNome').addEventListener('input', filtrarLista);
     document.getElementById('ordenarPor').addEventListener('change', filtrarLista);
     
-    // Fechar modal (Botão X e Clicar fora)
     document.querySelector('.close').addEventListener('click', fecharModal);
     window.addEventListener('click', (e) => { 
         if (e.target == document.getElementById('modalDetalhes')) fecharModal(); 
@@ -47,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let listaGlobalAnimes = [];
-let animeAtualModal = null; // Guarda o anime aberto atualmente
+let animeAtualModal = null;
 
 function fecharModal() {
     document.getElementById('modalDetalhes').style.display = "none";
@@ -58,15 +54,12 @@ async function carregarListaCompleta(token) {
     grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px;">Sincronizando com MyAnimeList...</div>';
 
     try {
-        // Adicionamos 'sort=list_updated_at' na URL para garantir que o "Recente" seja real
         const url = `https://api.myanimelist.net/v2/users/@me/animelist?fields=list_status{score,comments,status},mean,main_picture,start_season,studios&limit=700&sort=list_updated_at`;
         
         const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await response.json();
 
         if (data.data) {
-            // --- FILTRO AQUI ---
-            // Remove 'plan_to_watch' (Planejo assistir) e 'on_hold' (Em espera) se desejar
             const listaFiltrada = data.data.filter(item => {
                 const s = item.list_status.status;
                 return s === 'completed' || s === 'dropped' || s === 'watching';
@@ -103,7 +96,6 @@ async function carregarListaCompleta(token) {
 function processarComentario(texto) {
     if (!texto) return { media: "N/A", detalhes: {} };
 
-    // Decodificação segura utilizando parser HTML do navegador (evita injeção)
     const parser = new DOMParser();
     const doc = parser.parseFromString(texto, 'text/html');
     const textoDecodificado = doc.documentElement.textContent || "";
@@ -153,7 +145,6 @@ function renderizarCards(lista) {
 
         const corMedia = anime.mediaTecnica !== "N/A" ? "var(--gold)" : "var(--text-muted)";
 
-        // Estrutura estática segura com classes identificadoras
         card.innerHTML = `
             <img class="card-capa" src="" alt="Capa">
             <div class="card-body">
@@ -188,7 +179,6 @@ function renderizarCards(lista) {
             </div>
         `;
 
-        // Atribuição de textos e links de forma segura
         card.querySelector('.card-capa').src = anime.capa || "";
         card.querySelector('.card-title').textContent = anime.titulo || "";
         card.querySelector('.card-global-score').textContent = anime.notaGeralMAL || "N/A";
@@ -210,7 +200,6 @@ function abrirModalView(anime) {
 
     const criterios = Object.keys(anime.notasDetalhadas);
 
-    // Estrutura base estática
     conteudo.innerHTML = `
         <div class="modal-capa-container">
             <img class="modal-img" src="" alt="Capa">
@@ -258,14 +247,23 @@ function abrirModalView(anime) {
                      </select>
                 </div>
 
+                <!-- Lista onde os selects das notas aparecerão -->
                 <div id="listaInputsTecnicos"></div>
                 
-                <div class="edit-row-add">
-                    <input type="text" id="novoCritNome" placeholder="Novo critério...">
-                    <button id="btnAddCriterio">+</button>
+                <!-- BOTÃO DE ATIVAR MODO AVANÇADO -->
+                <div style="text-align: center; margin-top: 15px;">
+                    <button id="btnToggleCriterios" type="button" style="background: transparent; color: #6c5ce7; border: 1px dashed #6c5ce7; padding: 6px 15px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: 0.2s;">⚙️ Adicionar ou Remover Critérios</button>
                 </div>
 
-                <div class="action-bar">
+                <!-- ÁREA AVANÇADA (Oculta por padrão) -->
+                <div id="areaEditarCriterios" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #333;">
+                    <div class="edit-row-add">
+                        <input type="text" id="novoCritNome" placeholder="Novo critério...">
+                        <button id="btnAddCriterio">+</button>
+                    </div>
+                </div>
+
+                <div class="action-bar" style="margin-top: 20px;">
                     <button id="btnCancelarEdit" class="btn-secondary">Cancelar</button>
                     <button id="btnSalvarFinal" class="btn-primary">Salvar Alterações</button>
                 </div>
@@ -274,7 +272,6 @@ function abrirModalView(anime) {
         </div>
     `;
 
-    // Atribuição textual segura
     conteudo.querySelector('.modal-img').src = anime.capa || "";
     conteudo.querySelector('.modal-title').textContent = anime.titulo || "";
     conteudo.querySelector('.modal-sub-header').textContent = `${anime.estudio || 'Estúdio Desconhecido'} • ${anime.ano || 'TBA'}`;
@@ -283,7 +280,6 @@ function abrirModalView(anime) {
     conteudo.querySelector('#displayMediaTecnica').textContent = anime.mediaTecnica || "N/A";
     conteudo.querySelector('#modalLinkMAL').href = `https://myanimelist.net/anime/${anime.id}`;
 
-    // Construção segura da grade de critérios
     const viewContainer = conteudo.querySelector('#modalCriteriosViewContainer');
     viewContainer.innerHTML = '';
     
@@ -318,6 +314,28 @@ function abrirModalView(anime) {
     document.getElementById('btnAddCriterio').addEventListener('click', addCriterioDOM);
     document.getElementById('btnSalvarFinal').addEventListener('click', () => salvarNoMAL(anime.id));
 
+    document.getElementById('btnToggleCriterios').addEventListener('click', () => {
+        const areaAdd = document.getElementById('areaEditarCriterios');
+        const botoesDeletar = document.querySelectorAll('.btn-delete-crit');
+        const btnToggle = document.getElementById('btnToggleCriterios');
+        
+        const isFechado = areaAdd.style.display === 'none';
+
+        if (isFechado) {
+            // Abre o modo de edição estrutural (Mostra o input e os botões de X)
+            areaAdd.style.display = 'block';
+            botoesDeletar.forEach(b => b.style.display = 'flex'); 
+            btnToggle.textContent = "Ocultar Edição de Critérios";
+            btnToggle.style.background = "#2d2d33";
+        } else {
+            // Fecha o modo
+            areaAdd.style.display = 'none';
+            botoesDeletar.forEach(b => b.style.display = 'none'); 
+            btnToggle.textContent = "⚙️ Adicionar ou Remover Critérios";
+            btnToggle.style.background = "transparent";
+        }
+    });
+
     modal.style.display = "flex";
 }
 
@@ -330,22 +348,17 @@ function ativarModoEdicao() {
 
     const defaultCriterios = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design", "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia"];
 
-    // 1. Busca os critérios globais salvos nas configurações
     chrome.storage.local.get(['meusCriterios'], (res) => {
         let listaFinal = res.meusCriterios || [...defaultCriterios];
 
-        // 2. Extrai os critérios que já possuem notas salvas no comentário deste anime
         const criteriosNoAnime = Object.keys(animeAtualModal.notasDetalhadas);
 
-        // 3. Mesclagem inteligente: Adiciona os critérios personalizados deste anime na lista de edição,
-        // mas mantém visíveis os critérios globais padrão que ainda não foram preenchidos
         criteriosNoAnime.forEach(crit => {
             if (!listaFinal.includes(crit)) {
                 listaFinal.push(crit);
             }
         });
 
-        // 4. Desenha os campos de notas na tela para edição
         listaFinal.forEach(crit => {
             let valor = animeAtualModal.notasDetalhadas[crit] || 0;
             adicionarInputCriterio(containerInputs, crit, valor);
@@ -364,28 +377,26 @@ function adicionarInputCriterio(container, nome, valor) {
     let div = document.createElement('div');
     div.className = 'edit-row';
     
-    // HTML estruturado com Label em cima e (Select + Botão) embaixo
+    const areaEdicao = document.getElementById('areaEditarCriterios');
+    const displayX = (areaEdicao && areaEdicao.style.display === 'block') ? 'flex' : 'none';
+
     div.innerHTML = `
         <label>${nome}</label>
-        <div class="input-group">
+        <div class="input-group" style="display: flex; gap: 5px; align-items: center;">
             <select class="nota-select-modal input-calculo" data-criterio="${nome}">
                 <option value="0">-</option>
                 ${gerarOpcoes(valor)}
             </select>
-            <button class="btn-delete-crit" type="button" title="Remover critério">×</button>
+            <button class="btn-delete-crit" type="button" title="Remover critério" style="display: ${displayX}; background: #ff7675; color: white; border: none; border-radius: 4px; padding: 0 8px; cursor: pointer; align-items: center; justify-content: center;">×</button>
         </div>
     `;
     
     container.appendChild(div);
     
-    // 1. Listener para recalcular a média ao mudar a nota
     div.querySelector('select').addEventListener('change', recalcularMediaEdicao);
 
-    // 2. Listener para o botão de deletar
     div.querySelector('.btn-delete-crit').addEventListener('click', () => {
-        // Remove o elemento da tela (div.edit-row)
         div.remove();
-        // Recalcula a média imediatamente, pois esse item não existe mais
         recalcularMediaEdicao();
     });
 }

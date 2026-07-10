@@ -1,4 +1,3 @@
-// Função inteligente que detecta e cura qualquer corrupção de caracteres do MAL
 function normalizarCriterio(nome) {
     if (!nome) return "";
     let n = nome.trim();
@@ -29,7 +28,6 @@ let ultimoNomeIniciado = "";
 let timerDetectar = null;   
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Botão de Configurações
     document.getElementById('btnOptions').addEventListener('click', () => {
         chrome.runtime.openOptionsPage();
     });
@@ -45,7 +43,6 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.style.background = "#2e51a2"; 
         }
 
-        // Identifica o modo e adiciona a classe correta de dimensionamento no body
         const mode = res.viewMode || 'popup';
         document.body.classList.remove('popup-mode', 'sidepanel-mode');
         document.body.classList.add(mode + '-mode');
@@ -84,63 +81,202 @@ function iniciarLento() {
 }
 
 function detectarEIniciar() {
-    if (document.hidden) {
-        return;
-    }
+    if (document.hidden) return;
 
-    chrome.storage.local.get(['ultimoAnimeDetectado'], function(result) {
+    chrome.storage.local.get(['ultimoAnimeDetectado', 'ultimoAnimeDetectadoExato'], function(result) {
         if (result.ultimoAnimeDetectado) {
-            iniciar(result.ultimoAnimeDetectado);
-            chrome.storage.local.remove('ultimoAnimeDetectado');
+            iniciar(result.ultimoAnimeDetectado, null, result.ultimoAnimeDetectadoExato);
+            chrome.storage.local.remove(['ultimoAnimeDetectado', 'ultimoAnimeDetectadoExato']);
         } else {
             chrome.tabs.query({active: true, lastFocusedWindow: true}, function(tabs) {
                 let activeTab = tabs[0];
                 if (!activeTab || !activeTab.url) {
-                    iniciar("");
+                    iniciar("", null);
                     return;
                 }
                 
-                let url = activeTab.url;
-
-                if (url.includes("drive.google.com")) {
-                    let nomeLimpo = limparTitulo(activeTab.title);
-                    iniciar(nomeLimpo);
-                } 
-                else if (url.includes("netflix.com")) {
-                    chrome.tabs.sendMessage(activeTab.id, { action: "SOLICITAR_NOME_ANIME" }, (response) => {
-                        if (chrome.runtime.lastError || !response || !response.nome) {
-                            iniciar(limparTitulo(activeTab.title));
-                        } else {
-                            iniciar(response.nome);
-                        }
-                    });
-                }
-                else {
-                    iniciar(limparTitulo(activeTab.title));
-                }
+                chrome.tabs.sendMessage(activeTab.id, { action: "SOLICITAR_NOME_ANIME" }, (response) => {
+                    if (!chrome.runtime.lastError && response && response.nome) {
+                        iniciar(response.nome, response.epAtual, response.animeExato);
+                    } else {
+                        chrome.scripting.executeScript({
+                            target: { tabId: activeTab.id },
+                            func: () => {
+                                try {
+                                    let scripts = document.querySelectorAll('script[type="application/ld+json"]');
+                                    for (let script of scripts) {
+                                        if (script.textContent.includes('"TVEpisode"')) {
+                                            let data = JSON.parse(script.textContent);
+                                            let item = Array.isArray(data) ? data.find(x => x["@type"] && x["@type"].includes("TVEpisode")) : data;
+                                            if (item && item.partOfSeries) {
+                                                let nome = item.partOfSeries.name.replace(/\(.*Dub.*\)/i, "").trim();
+                                                let season = item.partOfSeason ? item.partOfSeason.seasonNumber : null;
+                                                if (season && parseInt(season) > 1) {
+                                                    let num = parseInt(season);
+                                                    let sufixo = num === 2 ? "2nd Season" : num === 3 ? "3rd Season" : num + "th Season";
+                                                    return { nome: `${nome} ${sufixo}`, ep: item.episodeNumber };
+                                                }
+                                                return { nome: nome, ep: item.episodeNumber };
+                                            }
+                                        }
+                                    }
+                                } catch(e){}
+                                return null;
+                            }
+                        }, (results) => {
+                            if (results && results[0] && results[0].result) {
+                                iniciar(results[0].result.nome, results[0].result.ep);
+                            } else {
+                                iniciar(limparTitulo(activeTab.title), null);
+                            }
+                        });
+                    }
+                });
             });
         }
     });
 }
 
+async function iniciar(nomeInicial, epAtual, animeExato = null) {
+    if (nomeInicial === ultimoNomeIniciado) return; 
+    ultimoNomeIniciado = nomeInicial;
+    document.getElementById('animeTitle').value = nomeInicial;
+
+    const termosProibidos = ["Anata no wo", "Eigakan", "Netflix", "Crunchyroll", "Google Drive", "Prime Video"];
+    let nomeEhValido = !termosProibidos.some(termo => nomeInicial.toLowerCase().includes(termo.toLowerCase()));
+    if (!nomeEhValido || !nomeInicial) nomeInicial = ""; 
+
+    // CHECAGEM DO MODO DE CORREÇÃO
+    chrome.storage.local.get([nomeInicial, 'isCorrectionMode'], async function(result) {
+        
+        // SE ESTIVER MODO CORREÇÃO, ESCONDE AS NOTAS E ESPERA A BUSCA!
+        if (result.isCorrectionMode) {
+            document.getElementById('correctionModeContainer').style.display = 'block';
+            let areaAvaliacao = document.getElementById('areaDeAvaliacao');
+            if (areaAvaliacao) areaAvaliacao.style.display = 'none';
+            document.getElementById('animeInfo').style.display = 'none';
+            return; // Aborta qualquer carregamento de nota
+        }
+
+        // Se não estiver em correção, garante que o menu tá normal
+        document.getElementById('correctionModeContainer').style.display = 'none';
+        let areaAvaliacao = document.getElementById('areaDeAvaliacao');
+        if (areaAvaliacao) areaAvaliacao.style.display = 'block';
+
+        if (result[nomeInicial]) {
+            carregarDadosNaTela(result[nomeInicial], nomeInicial);
+            exibirEpisodioAtualNoPopup(epAtual);
+        } else {
+            gerarInterfaceDinamica();
+            if (animeExato) {
+                selecionarAnime(animeExato);
+                verificarNotaNoMAL(animeExato.mal_id);
+                exibirEpisodioAtualNoPopup(epAtual);
+            } 
+            else if (nomeInicial && nomeInicial.length > 2) {
+                chrome.runtime.sendMessage({ action: 'buscarJikan', termo: nomeInicial, isAuto: false }, (response) => {
+                    if (response && response.success && response.data && response.data.length > 0) {
+                        selecionarAnime(response.data[0]);
+                        verificarNotaNoMAL(response.data[0].mal_id);
+                    }
+                });
+                exibirEpisodioAtualNoPopup(epAtual);
+            }
+        }
+    });
+}
+
+function limparInterface() {
+    document.getElementById('animeInfo').style.display = 'none';
+    
+    const epAssistindo = document.getElementById('epAssistindo');
+    if(epAssistindo) epAssistindo.style.display = 'none';
+    
+    document.getElementById('status').innerText = '';
+
+    let selects = document.querySelectorAll('.nota-select');
+    selects.forEach(sel => sel.value = "0");
+    
+    let media = document.getElementById('mediaFinal');
+    if (media) media.innerText = "0.00";
+    
+    let notaUsuarioMAL = document.getElementById('notaUsuarioMAL');
+    if (notaUsuarioMAL) notaUsuarioMAL.innerText = "-";
+
+    let notaTecnicaHeader = document.getElementById('notaTecnicaHeader');
+    if (notaTecnicaHeader) notaTecnicaHeader.innerText = "-";
+}
+
+
 function configurarOuvintes() {
+    // 1. Ouvinte de Busca Manual
     document.getElementById('btnBuscar').addEventListener('click', async function() {
         const campoInput = document.getElementById('animeTitle');
         const termoOriginal = campoInput.value;
 
-        if (termoOriginal.length > 2) {
+        if (termoOriginal.trim().length > 2) {
             console.log("Botão lupa clicado. Processando...");
+            limparInterface(); // Limpa a tela imediatamente ao clicar em buscar
+            
             const termoTraduzido = await traduzirParaIngles(termoOriginal);
             campoInput.value = termoTraduzido; 
-            buscarNoJikan(termoTraduzido, false);
+            
+            let listaDiv = document.getElementById('listaResultados');
+            listaDiv.style.display = 'block';
+            listaDiv.innerHTML = '<div style="padding:10px; color:#ccc;">Buscando...</div>';
+
+            // ATENÇÃO AQUI: isAuto: false!
+            chrome.runtime.sendMessage({ action: 'buscarJikan', termo: termoTraduzido, isAuto: false }, (response) => {
+                if (chrome.runtime.lastError || !response || !response.success || !response.data || response.data.length === 0) {
+                    listaDiv.innerHTML = '<div style="padding:10px; color:#ff7675;">Nenhum anime encontrado.</div>';
+                    return;
+                }
+                
+                listaDiv.innerHTML = ''; 
+                response.data.forEach(anime => {
+                    let anoLista = anime.year || "TBA";
+                    let div = document.createElement('div');
+                    div.className = 'item-resultado';
+                    div.innerHTML = `
+                        <img src="${anime.images.jpg.small_image_url}">
+                        <div>
+                            <b>${anime.title}</b><br>
+                            <small>${anoLista} • ${anime.media_type.toUpperCase()}</small>
+                        </div>`;
+                    
+                    div.addEventListener('click', () => {
+                        // Desativa o modo de correção (se estivesse ativo) quando clica na resposta
+                        chrome.storage.local.set({ isCorrectionMode: false }, () => {
+                            let areaAvaliacao = document.getElementById('areaDeAvaliacao');
+                            if (areaAvaliacao) areaAvaliacao.style.display = 'block';
+                            document.getElementById('correctionModeContainer').style.display = 'none';
+                            
+                            ultimoNomeIniciado = ""; // CORREÇÃO: Força a aceitar qualquer clique
+
+                            selecionarAnime(anime, true); // true = Força o player a corrigir
+                            verificarNotaNoMAL(anime.mal_id);
+                            listaDiv.style.display = 'none'; 
+                        });
+                    });
+                    listaDiv.appendChild(div);
+                });
+            });
         }
     });
+
+    // Limpa a tela assim que o usuário começar a apagar/digitar um novo nome
+    document.getElementById('animeTitle').addEventListener('input', function() {
+        limparInterface();
+        document.getElementById('listaResultados').innerHTML = '';
+    });
+
     document.getElementById('animeTitle').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault(); 
             document.getElementById('btnBuscar').click(); 
         }
     });
+    
     document.getElementById('btnSalvar').addEventListener('click', salvarDados);
     document.getElementById('btnVerLista').addEventListener('click', () => {
         chrome.tabs.create({ url: 'lista.html' });
@@ -149,49 +285,43 @@ function configurarOuvintes() {
     const btnLogin = document.getElementById('btnIrParaLogin');
     if (btnLogin) {
         btnLogin.addEventListener('click', () => {
-            chrome.runtime.openOptionsPage();
-            window.close();
+            chrome.runtime.openOptionsPage(); // Abre a página de opções para logar
+            window.close(); // Fecha o popup
         });
     }
 
     const btnLocal = document.getElementById('btnUsarLocal');
     if (btnLocal) {
         btnLocal.addEventListener('click', () => {
+            // Salva na memória que o usuário não quer o MAL
             chrome.storage.local.set({ syncMal: false }, () => {
-                document.getElementById('modalAvisoConexao').style.display = 'none';
-                verificarModoDeSalvamento(); 
+                document.getElementById('modalAvisoConexao').style.display = 'none'; // Esconde o modal
+                verificarModoDeSalvamento(); // Muda a cor do botão de salvar para roxo (Modo Local)
             });
         });
     }
-}
 
-async function iniciar(nomeInicial) {
-    // Filtro de memória que previne buscas idênticas duplicadas
-    if (nomeInicial === ultimoNomeIniciado) {
-        return; 
+    // --- AQUI ESTÁ O BOTÃO DE CANCELAR O MODO DE CORREÇÃO ---
+    const btnCancelCorrection = document.getElementById('btnCancelCorrection');
+    if (btnCancelCorrection) {
+        btnCancelCorrection.addEventListener('click', () => {
+            chrome.storage.local.set({ isCorrectionMode: false }, () => {
+                document.getElementById('correctionModeContainer').style.display = 'none';
+                let areaAvaliacao = document.getElementById('areaDeAvaliacao');
+                if (areaAvaliacao) areaAvaliacao.style.display = 'block'; 
+                
+                limparInterface();
+                ultimoNomeIniciado = ""; // CORREÇÃO: Limpa a memória para forçar o redesenho da tela
+                
+                // Manda um rádio pro vídeo dizendo: "Abortar missão, restaure o Toast!"
+                chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                    if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { action: "CANCELAR_CORRECAO" });
+                });
+                
+                detectarEIniciar(); 
+            });
+        });
     }
-    ultimoNomeIniciado = nomeInicial;
-
-    document.getElementById('animeTitle').value = nomeInicial;
-
-    const termosProibidos = ["Anata no wo", "Eigakan", "Netflix"];
-    let nomeEhValido = !termosProibidos.some(termo => nomeInicial.includes(termo));
-
-    if (!nomeEhValido || !nomeInicial) {
-        nomeInicial = ""; 
-    }
-    
-    chrome.storage.local.get([nomeInicial], async function(result) {
-        if (result[nomeInicial]) {
-            carregarDadosNaTela(result[nomeInicial], nomeInicial);
-        } else {
-            gerarInterfaceDinamica();
-            if(nomeInicial && nomeInicial.length > 2) {
-                const nomeParaBusca = await traduzirParaIngles(nomeInicial);
-                buscarNoJikan(nomeParaBusca, true);
-            }
-        }
-    });
 }
 
 function gerarInterfaceDinamica(dadosSalvos = null) {
@@ -255,7 +385,6 @@ function gerarInterfaceDinamica(dadosSalvos = null) {
             const chavesIgnorar = ['media', 'mal_id', 'capa', 'nome_oficial', 'nota_mal'];
             const criteriosEncontrados = Object.keys(dadosSalvos).filter(k => !chavesIgnorar.includes(k));
             
-            // Adiciona quaisquer critérios antigos salvos na obra que por acaso não estejam na sua configuração de critérios global
             criteriosEncontrados.forEach(crit => {
                 if (!listaFinal.includes(crit)) {
                     listaFinal.push(crit);
@@ -281,7 +410,15 @@ function calcularMediaInteligente() {
     });
 
     let media = contador > 0 ? (soma / contador) : 0;
-    document.getElementById('mediaFinal').innerText = media.toFixed(2);
+    let mediaFormatada = media.toFixed(2);
+
+    let mediaFinal = document.getElementById('mediaFinal');
+    if (mediaFinal) mediaFinal.innerText = mediaFormatada;
+
+    let notaTecnicaHeader = document.getElementById('notaTecnicaHeader');
+    if (notaTecnicaHeader) {
+        notaTecnicaHeader.innerText = media > 0 ? mediaFormatada : "-";
+    }
 }
 
 function buscarNoJikan(termo, buscaAutomatica) {
@@ -291,56 +428,74 @@ function buscarNoJikan(termo, buscaAutomatica) {
         listaDiv.innerHTML = '<div style="padding:10px; color:#ccc;">Buscando...</div>';
     }
 
-    fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(termo)}&limit=5`)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
+    chrome.runtime.sendMessage({ action: 'buscarJikan', termo: termo, isAuto: false }, (response) => {
+        if (chrome.runtime.lastError) {
+            if (!buscaAutomatica) listaDiv.innerHTML = '<div style="padding:10px; color:#ff7675;">Erro na conexão. Tente novamente.</div>';
+            return;
+        }
+
+        if (response && response.success) {
+            let temporadas = response.data;
             listaDiv.innerHTML = ''; 
-            if (!data.data || data.data.length === 0) {
-                if (!buscaAutomatica) {
-                    listaDiv.innerHTML = '<div style="padding:10px; color:#ff7675;">Nenhum anime encontrado.</div>';
-                }
+            
+            if (!temporadas || temporadas.length === 0) {
+                if (!buscaAutomatica) listaDiv.innerHTML = '<div style="padding:10px; color:#ff7675;">Nenhum anime encontrado.</div>';
                 return;
             }
             
             if (buscaAutomatica) {
-                let anime = data.data[0];
-                selecionarAnime(anime);
-                verificarNotaNoMAL(anime.mal_id);
+                selecionarAnime(temporadas[0]);
+                verificarNotaNoMAL(temporadas[0].mal_id);
                 return; 
             }
             
-            data.data.forEach(anime => {
+            temporadas.forEach(anime => {
                 let anoLista = anime.year || "TBA";
-
                 let div = document.createElement('div');
                 div.className = 'item-resultado';
                 div.innerHTML = `
                     <img src="${anime.images.jpg.small_image_url}">
                     <div>
                         <b>${anime.title}</b><br>
-                        <small>${anoLista}</small>
+                        <small>${anoLista} • ${anime.media_type.toUpperCase()}</small>
                     </div>`;
                 
                 div.addEventListener('click', () => {
-                    selecionarAnime(anime);
-                    verificarNotaNoMAL(anime.mal_id);
-                    listaDiv.style.display = 'none'; 
+                    chrome.storage.local.set({ isCorrectionMode: false }, () => {
+                            let areaAvaliacao = document.getElementById('areaDeAvaliacao');
+                            if (areaAvaliacao) areaAvaliacao.style.display = 'block';
+                            document.getElementById('correctionModeContainer').style.display = 'none';
+                            
+                            selecionarAnime(anime, true);
+                            verificarNotaNoMAL(anime.mal_id);
+                            listaDiv.style.display = 'none';  
+                    });
                 });
                 listaDiv.appendChild(div);
             });
-        })
-        .catch(err => {
-            console.error("MAL Reviewer: Erro ao buscar no Jikan:", err);
-            if (!buscaAutomatica) {
-                listaDiv.innerHTML = '<div style="padding:10px; color:#ff7675;">Erro na conexão. Tente novamente.</div>';
-            }
-        });
+        }
+    });
 }
 
-function selecionarAnime(anime) {
+function exibirEpisodioAtualNoPopup(ep) {
+    const el = document.getElementById('epAssistindo');
+    if (el && ep) {
+        el.innerText = `📺 Assistindo agora: Episódio ${ep}`;
+        el.style.display = 'block';
+    } else if (el) {
+        el.style.display = 'none';
+    }
+}
+
+function selecionarAnime(anime, isManualCorrection = false) {
+    if (isManualCorrection) {
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, { action: "FORCAR_CORRECAO_ANIME", animeExato: anime });
+            }
+        });
+    }
+
     document.getElementById('animeInfo').style.display = 'flex';
     document.getElementById('animeCapa').src = anime.images.jpg.image_url;
     document.getElementById('animeNomeOficial').innerText = anime.title;
@@ -438,37 +593,49 @@ function limparTitulo(t) {
 }
 
 async function verificarNotaNoMAL(malId) {
-    const res = await chrome.storage.local.get(['mal_access_token']);
-    if (!res.mal_access_token) return false;
+    return new Promise((resolve) => {
+        // Envia o ID achado pelo AniList para buscar os dados oficiais no MAL
+        chrome.runtime.sendMessage({ action: 'buscarDetalhesMAL', malId: malId }, (response) => {
+            if (chrome.runtime.lastError || !response || !response.success) {
+                document.getElementById('notaUsuarioMAL').innerText = "-";
+                resolve(false);
+                return;
+            }
 
-    try {
-        const resp = await fetch(`https://api.myanimelist.net/v2/anime/${malId}?fields=my_list_status{score,comments}`, {
-            headers: { 'Authorization': `Bearer ${res.mal_access_token}` }
-        });
-        
-        if (resp.ok) {
-            const dados = await resp.json();
-            if (dados.my_list_status) {
-                document.getElementById('notaUsuarioMAL').innerText = dados.my_list_status.score > 0 ? dados.my_list_status.score : "-";
+            const dadosMAL = response.data;
+
+            document.getElementById('animeNomeOficial').innerText = dadosMAL.title;
+            document.getElementById('notaGlobalMAL').innerText = dadosMAL.mean ? dadosMAL.mean.toFixed(2) : "-";
+            
+            if (dadosMAL.main_picture && dadosMAL.main_picture.large) {
+                document.getElementById('animeCapa').src = dadosMAL.main_picture.large;
+            }
+
+            let ano = dadosMAL.start_season ? dadosMAL.start_season.year : "TBA";
+            let estudio = (dadosMAL.studios && dadosMAL.studios.length > 0) ? " • " + dadosMAL.studios[0].name : "";
+            document.getElementById('animeAno').innerText = ano + estudio;
+
+            if (dadosMAL.my_list_status) {
+                document.getElementById('notaUsuarioMAL').innerText = dadosMAL.my_list_status.score > 0 ? dadosMAL.my_list_status.score : "-";
+                
                 let selMal = document.getElementById('notaMalOficial');
-                if(selMal) selMal.value = dados.my_list_status.score || 0;
+                if(selMal) selMal.value = dadosMAL.my_list_status.score || 0;
 
-                if (dados.my_list_status.comments) {
-                    processarComentarioParaPopup(dados.my_list_status.comments, malId);
-                    return true;
+                if (dadosMAL.my_list_status.comments) {
+                    processarComentarioParaPopup(dadosMAL.my_list_status.comments, malId);
+                    resolve(true);
+                    return;
                 }
-                if (dados.my_list_status.score > 0) return true;
+                if (dadosMAL.my_list_status.score > 0) {
+                    resolve(true);
+                    return;
+                }
             } else {
                 document.getElementById('notaUsuarioMAL').innerText = "-";
             }
-        } else {
-            document.getElementById('notaUsuarioMAL').innerText = "-";
-        }
-    } catch (e) { 
-        console.error("Erro API MAL:", e); 
-        document.getElementById('notaUsuarioMAL').innerText = "-";
-    }
-    return false;
+            resolve(false);
+        });
+    });
 }
 
 function processarComentarioParaPopup(comentario, malId) {
@@ -567,28 +734,7 @@ function verificarModoDeSalvamento() {
     });
 }
 
-async function traduzirParaIngles(titulo) {
-    if (titulo.length < 3) return titulo;
 
-    try {
-        console.log("Tentando traduzir:", titulo); 
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(titulo)}`;
-        
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        
-        const data = await response.json();
-        
-        if (data && data[0] && data[0][0] && data[0][0][0]) {
-            const resultado = data[0][0][0];
-            console.log("Tradução concluída:", resultado); 
-            return resultado;
-        }
-    } catch (e) {
-        console.error("Falha na conexão com tradutor:", e);
-    }
-    return titulo;
-}
 
 function inlineTrim(str) {
     return str ? str.trim() : "";

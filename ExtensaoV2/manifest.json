@@ -13,12 +13,17 @@
     "default_title": "MAL Notas Extras",
     "default_panel": "popup.html"
   },
-  "host_permissions": ["https://api.jikan.moe/*", "https://myanimelist.net/*", "https://api.myanimelist.net/*"],
+  "host_permissions": [
+    "https://api.jikan.moe/*", 
+    "https://myanimelist.net/*", 
+    "https://api.myanimelist.net/*",
+    "https://graphql.anilist.co/*",
+    "<all_urls>"
+  ],
   "content_scripts": [
     {
-      "matches": ["*://drive.google.com/*", "*://www.crunchyroll.com/*", "*://www.netflix.com/*"],
-      "js": ["content.js"],
-      "css": ["overlay.css"]
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
     }
   ],
   "background": {
@@ -39,4 +44,3 @@
   ],
   "icons": { "16": "icon.png", "48": "icon.png", "128": "icon.png" }
 }
-
