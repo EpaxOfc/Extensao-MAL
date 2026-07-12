@@ -149,16 +149,47 @@ async function iniciar(nomeInicial, epAtual, animeExato = null) {
     // CHECAGEM DO MODO DE CORREÇÃO
     chrome.storage.local.get([nomeInicial, 'isCorrectionMode'], async function(result) {
         
-        // SE ESTIVER MODO CORREÇÃO, ESCONDE AS NOTAS E ESPERA A BUSCA!
+        // SE ESTIVER MODO CORREÇÃO, ESCONDE AS NOTAS E MOSTRA AS OPÇÕES DE CORREÇÃO
         if (result.isCorrectionMode) {
-            document.getElementById('correctionModeContainer').style.display = 'block';
+            let container = document.getElementById('correctionModeContainer');
+            container.style.display = 'block';
+            
+            let divCorretor = document.getElementById('divCorretorEpisodio');
+            if (!divCorretor) {
+                divCorretor = document.createElement('div');
+                divCorretor.id = 'divCorretorEpisodio';
+                divCorretor.style.cssText = 'margin-top: 15px; padding-top: 15px; border-top: 1px solid #444;';
+                container.appendChild(divCorretor);
+            }
+            
+            divCorretor.innerHTML = `
+                <div style="font-size: 13px; margin-bottom: 5px; color: #fff;">Ou corrija apenas o número do episódio:</div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="number" id="inputCorrecaoEp" value="${epAtual || 1}" style="width: 50px; background: #222; color: #fff; border: 1px solid #6c5ce7; border-radius: 4px; padding: 4px;">
+                    <button id="btnSalvarCorrecaoEp" style="background: #6c5ce7; color: #fff; border: none; border-radius: 4px; cursor: pointer; padding: 4px 10px; font-weight: bold;">Salvar Episódio</button>
+                </div>
+            `;
+            
+            document.getElementById('btnSalvarCorrecaoEp').addEventListener('click', () => {
+                let newEp = parseInt(document.getElementById('inputCorrecaoEp').value);
+                if (!isNaN(newEp) && newEp > 0) {
+                    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                        if (tabs[0]) {
+                            chrome.tabs.sendMessage(tabs[0].id, { action: "FORCAR_EPISODIO", ep: newEp }, () => {
+                                let btnCancel = document.getElementById('btnCancelCorrection');
+                                if(btnCancel) btnCancel.click(); 
+                            });
+                        }
+                    });
+                }
+            });
+
             let areaAvaliacao = document.getElementById('areaDeAvaliacao');
             if (areaAvaliacao) areaAvaliacao.style.display = 'none';
             document.getElementById('animeInfo').style.display = 'none';
-            return; // Aborta qualquer carregamento de nota
+            return; 
         }
 
-        // Se não estiver em correção, garante que o menu tá normal
         document.getElementById('correctionModeContainer').style.display = 'none';
         let areaAvaliacao = document.getElementById('areaDeAvaliacao');
         if (areaAvaliacao) areaAvaliacao.style.display = 'block';
@@ -313,7 +344,6 @@ function configurarOuvintes() {
                 limparInterface();
                 ultimoNomeIniciado = ""; // CORREÇÃO: Limpa a memória para forçar o redesenho da tela
                 
-                // Manda um rádio pro vídeo dizendo: "Abortar missão, restaure o Toast!"
                 chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
                     if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { action: "CANCELAR_CORRECAO" });
                 });
@@ -322,6 +352,22 @@ function configurarOuvintes() {
             });
         });
     }
+}
+
+async function traduzirParaIngles(titulo) {
+    if (titulo.length < 3) return titulo;
+    try {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(titulo)}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
+        const data = await response.json();
+        if (data && data[0] && data[0][0] && data[0][0][0]) {
+            return data[0][0][0];
+        }
+    } catch (e) {
+        console.error("MAL Reviewer: Falha na conexão com o tradutor em segundo plano:", e);
+    }
+    return titulo;
 }
 
 function gerarInterfaceDinamica(dadosSalvos = null) {
@@ -480,8 +526,29 @@ function buscarNoJikan(termo, buscaAutomatica) {
 function exibirEpisodioAtualNoPopup(ep) {
     const el = document.getElementById('epAssistindo');
     if (el && ep) {
-        el.innerText = `📺 Assistindo agora: Episódio ${ep}`;
+        el.innerHTML = `📺 Assistindo: Episódio <b id="textEpAtual">${ep}</b> 
+        <button id="btnEditEp" style="background:none; border:none; cursor:pointer; font-size:12px; margin-left:5px; padding:0;" title="Corrigir Episódio">✏️</button>`;
         el.style.display = 'block';
+
+        // Evento de clique para transformar o número em um input
+        document.getElementById('btnEditEp').addEventListener('click', () => {
+            el.innerHTML = `📺 Assistindo: <input type="number" id="inputEditEp" value="${ep}" style="width:45px; background:#222; color:#fff; border:1px solid #6c5ce7; border-radius:4px; padding:2px 4px;"> 
+            <button id="btnSaveEp" style="background:#6c5ce7; color:#fff; border:none; border-radius:4px; cursor:pointer; padding:2px 8px; margin-left:5px; font-weight:bold;">Salvar</button>`;
+            
+            document.getElementById('btnSaveEp').addEventListener('click', () => {
+                let newEp = parseInt(document.getElementById('inputEditEp').value);
+                if (!isNaN(newEp) && newEp > 0) {
+                    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                        if (tabs[0]) {
+                            // Envia o novo episódio para o content.js fazer o cálculo reverso do Offset
+                            chrome.tabs.sendMessage(tabs[0].id, { action: "FORCAR_EPISODIO", ep: newEp }, () => {
+                                exibirEpisodioAtualNoPopup(newEp); // Volta o texto ao normal
+                            });
+                        }
+                    });
+                }
+            });
+        });
     } else if (el) {
         el.style.display = 'none';
     }

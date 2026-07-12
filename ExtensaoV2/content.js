@@ -21,6 +21,26 @@ let netflixTituloSalvo = "";
 let netflixTemporadaSalva = null;
 let netflixEpisodioSalvo = null;
 let sondaNetflixSolicitada = false;
+let termoBuscaOriginal = "";
+let isCorrecaoManual = false;
+let episodioRelativoAtual = 1;
+let netflixUniqueIdSalvo = null;
+let idPlataformaAtual = null; 
+let netflixTitleTrap = "";
+let netflixTrapObserver = null;
+let netflixEpisodeTrap = null;
+let lastUrlTrap = window.location.href;
+let netflixLastShowName = "";
+let netflixLastSeason = null;
+let netflixLastType = null;
+let netflixPredicaoSeason = null;
+let netflixPredicaoEpisode = null;
+let ultimaTemporadaAssistida = null;
+let ultimoEpisodioAssistido = null;
+let ultimoTotalEpisodios = null;
+let netflixSeasonTrap = null;
+let offsetManualFix = 0;
+let idPlataformaAtual = null;
 
 let cfgAutoUpdateProgress = true;      
 let cfgAutoUpdateTrigger = '80percent'; 
@@ -28,22 +48,209 @@ let cfgAutoCompleteOnLast = true;
 let cfgBlockRegressionOnComplete = true;
 let cfgAutoOpenOverlayIfNoScore = true;
 
+document.addEventListener('click', (e) => {
+    if (!window.location.href.includes("netflix.com")) return;
+
+    let target = e.target;
+    
+    let epNum = null;
+    let seasonNum = null;
+
+    // --- 1. CLIQUE NO MINI-MODAL DA PÁGINA BROWSE (Novo!) ---
+    let miniModal = target.closest('.previewModal--info-container, .mini-modal-container');
+    if (miniModal) {
+        let epDetails = miniModal.querySelector('.previewModal-episodeDetails, .previewModal-episode-title');
+        if (epDetails) {
+            let txt = epDetails.innerText || ""; // Ex: "T2:E14" ou "T1:E1"
+            let matchTE = txt.match(/[TS]\s*(\d+)\s*:\s*E\s*(\d+)/i);
+            if (matchTE) {
+                seasonNum = parseInt(matchTE[1]);
+                epNum = parseInt(matchTE[2]);
+            }
+        }
+    }
+
+    // --- 2. CLIQUE NO MENU LATERAL DE EPISÓDIOS DENTRO DO PLAYER ---
+    let isEpisodePaneItem = target.closest('[data-uia="episode-pane-item"]');
+    if (!seasonNum && isEpisodePaneItem) {
+        let numEl = isEpisodePaneItem.querySelector('[data-uia="episode-pane-item-number"]');
+        if (numEl) epNum = parseInt(numEl.innerText.trim());
+        
+        let headerEl = document.querySelector('[data-uia="selector-episode-header"], [data-uia="season-pane-title"]');
+        if (headerEl) {
+            let match = headerEl.innerText.match(/(\d+)[a-zªº]*\s*(?:Temporada|Season|Parte|Part)|(?:Temporada|Season|Parte|Part)\s*(\d+)/i);
+            if (match) seasonNum = parseInt(match[1] || match[2]);
+        }
+    } 
+
+    // --- 3. CLIQUE EM CARDS GENÉRICOS (Ex: Interface antiga ou busca) ---
+    let cardEpisodio = target.closest('[data-uia^="episode-"], .episode-list-item, .titleCardList--container div, [role="button"]');
+    if (!seasonNum && cardEpisodio && !miniModal && !isEpisodePaneItem) {
+        let txt = cardEpisodio.innerText || "";
+        let matchTE = txt.match(/[TS]\s*(\d+)\s*:\s*E\s*(\d+)/i);
+        
+        if (matchTE) {
+            seasonNum = parseInt(matchTE[1]);
+            epNum = parseInt(matchTE[2]);
+        } else {
+            let matchEp = txt.match(/(?:Epis[óo]dio|Episode|Ep\.|E)\s*(\d+)/i) || txt.match(/^\s*(\d+)\s*\./);
+            if (matchEp) epNum = parseInt(matchEp[1]);
+            
+            let dropdownSeason = document.querySelector('[data-uia="season-selector"], [data-uia="dropdown-toggle"], .season-selector');
+            if (dropdownSeason) {
+                let matchSeason = dropdownSeason.innerText.match(/(\d+)[a-zªº]*\s*(?:Temporada|Season|Parte|Part)|(?:Temporada|Season|Parte|Part)\s*(\d+)/i);
+                if (matchSeason) seasonNum = parseInt(matchSeason[1] || matchSeason[2]);
+            }
+        }
+    }
+    
+    // Aplica as variáveis salvas
+    if (seasonNum) netflixPredicaoSeason = seasonNum;
+    if (epNum) netflixPredicaoEpisode = epNum;
+
+    // Apenas loga se algo de útil foi encontrado, evitando flood de "Tnull Enull"
+    if (seasonNum || epNum) {
+        console.log(`MAL Reviewer: 🔮 [PREDIÇÃO POR CLIQUE] Detectado: T${netflixPredicaoSeason || '?'} E${netflixPredicaoEpisode || '?'}`);
+    }
+
+    // --- 4. CLIQUE NO BOTÃO "PRÓXIMO EPISÓDIO" (Autoplay manual) ---
+    let btnProximo = target.closest('[data-uia="next-episode-seamless-button"], [data-uia="next-episode-button"]');
+    if (btnProximo && ultimaTemporadaAssistida && ultimoEpisodioAssistido && !seasonNum) {
+        if (ultimoEpisodioAssistido >= (ultimoTotalEpisodios || 99)) {
+            netflixPredicaoSeason = ultimaTemporadaAssistida + 1;
+            netflixPredicaoEpisode = 1;
+        } else {
+            netflixPredicaoSeason = ultimaTemporadaAssistida;
+            netflixPredicaoEpisode = ultimoEpisodioAssistido + 1;
+        }
+        console.log(`MAL Reviewer: 🔮 [PREDIÇÃO MATEMÁTICA] Próximo EP clicado. Previsão: T${netflixPredicaoSeason} E${netflixPredicaoEpisode}`);
+    }
+}, true);
+
+if (window.location.href.includes("netflix.com")) {
+    sondaNetflixSolicitada = true;
+    chrome.runtime.sendMessage({ action: 'INJETAR_SONDA_NETFLIX' });
+}
+
+
+function armarArmadilhaNetflix() {
+    const capturarDados = () => {
+        // 1. Rouba o Nome
+        let h4 = document.querySelector('[data-uia="video-title"] h4');
+        let h2 = document.querySelector('[data-uia="evidence-overlay"] h2');
+        let txt = "";
+        
+        if (h4) {
+            txt = h4.textContent;
+        } else if (h2) {
+            txt = h2.textContent;
+        } else {
+            let container = document.querySelector('[data-uia="video-title"]');
+            if (container && container.childNodes.length > 0) {
+                txt = container.childNodes[0].textContent;
+            }
+        }
+        
+        if (txt) {
+            txt = txt.replace(/[【】]/g, "").trim();
+            if (txt.length > 0 && txt !== netflixTitleTrap) {
+                netflixTitleTrap = txt;
+                console.log("MAL Reviewer: 🪤 Armadilha de Nome disparou:", netflixTitleTrap);
+            }
+        }
+        
+        // 2. Rouba a Temporada (NOVO)
+        let seasonEl = document.querySelector('[data-uia="evidence-overlay-season-title"]');
+        let pauseTitleEl = document.querySelector('[data-uia="pause-ad-title-display-info-container"] span');
+        let tempSeason = null;
+        
+        if (seasonEl) {
+            let sMatch = seasonEl.textContent.match(/\d+/);
+            if (sMatch) tempSeason = parseInt(sMatch[0]);
+        } else if (pauseTitleEl) {
+            let sMatch = pauseTitleEl.textContent.match(/T(\d+):/i) || pauseTitleEl.textContent.match(/S(\d+):/i);
+            if (sMatch) tempSeason = parseInt(sMatch[1]);
+        }
+        
+        if (tempSeason && tempSeason !== netflixSeasonTrap) {
+            netflixSeasonTrap = tempSeason;
+            console.log("MAL Reviewer: 🪤 Armadilha de Temporada disparou:", netflixSeasonTrap);
+        }
+
+        // 3. Rouba o Episódio (MELHORADO)
+        let tempEpisode = null;
+        let epEl = document.querySelector('[data-uia="evidence-overlay-episode-title"]');
+        
+        if (epEl) {
+            let match = epEl.textContent.match(/E:\s*(\d+)/i) || epEl.textContent.match(/Epis[óo]dio\s*(\d+)/i);
+            if (match) tempEpisode = parseInt(match[1]);
+        }
+        if (!tempEpisode && pauseTitleEl) {
+            let match = pauseTitleEl.textContent.match(/E(\d+)\s/i) || pauseTitleEl.textContent.match(/E:?\s*(\d+)/i) || pauseTitleEl.textContent.match(/T\d+:E(\d+)/i);
+            if (match) tempEpisode = parseInt(match[1]);
+        }
+        if (!tempEpisode) { // Fallback antigo
+            let tituloContainer = document.querySelector('[data-uia="video-title"]');
+            if (tituloContainer) {
+                let spans = tituloContainer.querySelectorAll('span');
+                for (let span of spans) {
+                    let match = span.innerText.match(/E\s*:?\s*(\d+)/i) || 
+                                span.innerText.match(/Epis[óo]dio\s*(\d+)/i) || 
+                                span.innerText.match(/Episode\s*(\d+)/i) || 
+                                span.innerText.match(/Ep\.\s*(\d+)/i);
+                    if (match) {
+                        tempEpisode = parseInt(match[1]);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (tempEpisode && tempEpisode !== netflixEpisodeTrap) {
+            netflixEpisodeTrap = tempEpisode;
+            console.log("MAL Reviewer: 🪤 Armadilha de Episódio disparou:", netflixEpisodeTrap);
+        }
+    };
+    
+    capturarDados(); 
+
+    if (netflixTrapObserver) netflixTrapObserver.disconnect();
+    netflixTrapObserver = new MutationObserver(() => {
+        if (window.location.pathname.includes('/watch/')) {
+            capturarDados();
+        }
+    });
+    
+    netflixTrapObserver.observe(document.body, { childList: true, subtree: true });
+}
+armarArmadilhaNetflix();
+
+setInterval(() => {
+    if (window.location.href !== lastUrlTrap) {
+        lastUrlTrap = window.location.href;
+        
+        netflixTitleTrap = ""; 
+        netflixEpisodeTrap = null; 
+        netflixSeasonTrap = null;
+        
+        netflixPredicaoSeason = null;
+        netflixPredicaoEpisode = null;
+        
+        ultimaTemporadaAssistida = null;
+        ultimoEpisodioAssistido = null;
+    }
+}, 1000);
+
+
 
 
 const intervaloCheck = setInterval(() => {
     let url = window.location.href;
 
     if (url.includes("netflix.com")) {
-        // Se estiver na Netflix e não for a URL /watch/ ou /title/, mata o rastreio!
         if (!url.includes("/watch/") && !url.includes("/title/")) {
             if (monitorando) resetarMonitoramento();
             return; 
-        }
-
-        // 👉 A CORREÇÃO ESTÁ AQUI: Avisa o background para injetar a sonda na Netflix
-        if (!sondaNetflixSolicitada) {
-            sondaNetflixSolicitada = true;
-            chrome.runtime.sendMessage({ action: 'INJETAR_SONDA_NETFLIX' });
         }
 
         let playerContainer = document.querySelector('[data-videoid]');
@@ -52,14 +259,11 @@ const intervaloCheck = setInterval(() => {
         if (videoIdDetectado && videoIdDetectado !== videoIdAtual) {
             videoIdAtual = videoIdDetectado;
             resetarMonitoramento();
+            chrome.runtime.sendMessage({ action: 'INJETAR_SONDA_NETFLIX' });
         }
-    } else if (url !== urlAtual) {
-        urlAtual = url;
-        resetarMonitoramento();
     }
 
     let video = document.querySelector('video');
-    // Ignora vídeos muito curtos (Trailers menores que 2.5 minutos / 150 segundos)
     if (video && !monitorando && video.duration > 150) {
         chrome.storage.local.get(['customUrls'], (res) => {
             const urlsPermitidas = ["netflix.com", "crunchyroll.com", "primevideo.com", "amazon.com/gp/video", "drive.google.com"];
@@ -83,7 +287,22 @@ function resetarMonitoramento() {
     totalEpisodiosAnime = 0;
     numeroEpisodioAtual = null; 
     malProgressoSincronizado = false;
-    verificandoNota = false;
+    verificandoNota = false;  
+    termoBuscaOriginal = "";
+    isCorrecaoManual = false;
+    episodioRelativoAtual = 1;
+    netflixTituloSalvo = "";
+    netflixTemporadaSalva = null;
+    netflixEpisodioSalvo = null;
+    netflixUniqueIdSalvo = null;
+    idPlataformaAtual = null;
+    window.ultimoEpProcessadoOTM = null;
+
+    let sondaDiv = document.getElementById('mal-reviewer-netflix-data');
+    if (sondaDiv) {
+        sondaDiv.innerText = "";
+        sondaDiv.removeAttribute('data-video');
+    }
     
     const overlayAntigo = document.getElementById('mal-overlay-container');
     if (overlayAntigo) overlayAntigo.remove();
@@ -94,12 +313,13 @@ function resetarMonitoramento() {
 
 function iniciarMonitoramento(video) {
     console.log("MAL Reviewer: Vídeo detectado. Monitorando...");
-    console.log("MAL Reviewer: Episódio detectado no player:", detectarEpisodioAtual());
+    
 
     chrome.storage.local.get([
         'autoUpdateProgress', 'autoUpdateTrigger', 'autoCompleteOnLast', 
         'blockRegressionOnComplete', 'autoOpenOverlayIfNoScore', 
-        'enableTrackingToast', 'showFlashInFullscreen', 'enableRatingOverlay',
+        'allowInFullscreen', 'enableToastExp', 'enableToastMicro', 
+        'enableToastFlash', 'enableOverlay',
         'sizeToastExp', 'sizeToastMicro', 'sizeToastFlash', 'sizeOverlay'
     ], (res) => {
         cfgAutoUpdateProgress = res.autoUpdateProgress ?? true;
@@ -108,9 +328,12 @@ function iniciarMonitoramento(video) {
         cfgBlockRegressionOnComplete = res.blockRegressionOnComplete ?? true;
         cfgAutoOpenOverlayIfNoScore = res.autoOpenOverlayIfNoScore ?? true;
         
-        window.cfgEnableTrackingToast = res.enableTrackingToast ?? true;
-        window.cfgShowFlashInFullscreen = res.showFlashInFullscreen ?? true;
-        window.cfgEnableRatingOverlay = res.enableRatingOverlay ?? true;
+        // Mapeamento das 5 Novas Chaves Visuais
+        window.cfgAllowInFullscreen = res.allowInFullscreen ?? true;
+        window.cfgEnableToastExp = res.enableToastExp ?? true;
+        window.cfgEnableToastMicro = res.enableToastMicro ?? true;
+        window.cfgEnableToastFlash = res.enableToastFlash ?? true;
+        window.cfgEnableOverlay = res.enableOverlay ?? true;
         
         window.cfgSizeToastExp = res.sizeToastExp || 'medium';
         window.cfgSizeToastMicro = res.sizeToastMicro || 'medium';
@@ -119,22 +342,50 @@ function iniciarMonitoramento(video) {
     });
 
     detectarNomeAnime().then(nome => {
+        console.log("MAL Reviewer: Episódio detectado no player:", detectarEpisodioAtual());
         if(nome) {
-            buscarDadosNoJikan(nome);
+            termoBuscaOriginal = nome;
+            
+            if (idPlataformaAtual) {
+                chrome.storage.local.get(["CORRECAO_" + idPlataformaAtual], (res) => {
+                    if (res["CORRECAO_" + idPlataformaAtual]) {
+                        console.log("MAL Reviewer: Memória de ID Exclusivo ativada para:", idPlataformaAtual);
+                        let dadosSalvos = res["CORRECAO_" + idPlataformaAtual];
+                        
+                        animeDetectado = dadosSalvos.anime;
+                        totalEpisodiosAnime = animeDetectado.episodes || 1;
+                        isCorrecaoManual = true;
+                        
+                        // Resgata o offset forçado ou o antigo
+                        offsetManualFix = dadosSalvos.forcedOffset !== undefined ? dadosSalvos.forcedOffset : (dadosSalvos.offset || 0);
+
+                        let epAbs = detectarEpisodioAtual() || 1;
+                        let epRel = epAbs - offsetManualFix;
+                        if (epRel <= 0) epRel = epAbs;
+                        episodioRelativoAtual = epRel;
+
+                        mostrarToastRastreio(animeDetectado, epRel, totalEpisodiosAnime);
+                    } else {
+                        buscarDadosNoJikan(nome);
+                    }
+                });
+            } else {
+                buscarDadosNoJikan(nome);
+            }
         }
     });
 
     video.addEventListener('timeupdate', () => {
+        // Anti-ad
+        if (!video.duration || video.duration < 180) return;
+
         const isCompleted = animeDetectado && animeDetectado.my_list_status && animeDetectado.my_list_status.status === 'completed';
-        
         const bloquearEnvio = cfgBlockRegressionOnComplete && isCompleted;
 
         if (!isToastDismissed && video.duration > 0) {
             let pct = (video.currentTime / video.duration) * 100;
-            
             let microFill = document.getElementById('micro-progress-fill');
             if (microFill) microFill.style.width = `${pct}%`;
-
             let hoverFill = document.querySelector('.hover-episode-fill');
             if (hoverFill) hoverFill.style.width = `${pct}%`;
         }
@@ -142,23 +393,35 @@ function iniciarMonitoramento(video) {
         if (!totalEpisodiosAnime || totalEpisodiosAnime === 0) return;
 
         let epAbsVal = detectarEpisodioAtual();
-        let ehFilme = epAbsVal === null; 
         let epAbsolute = epAbsVal || 1;
         
-        let duracaoMinutos = video.duration > 0 ? (video.duration / 60) : 0;
+        // 🚀 OTIMIZAÇÃO: Só faz o cálculo pesado se o episódio mudar!
+        if (window.ultimoEpProcessadoOTM !== epAbsolute) {
+            window.ultimoEpProcessadoOTM = epAbsolute; // Salva na memória curta
+            
+            let ehFilme = epAbsVal === null; 
+            let duracaoMinutos = video.duration > 0 ? (video.duration / 60) : 0;
 
-        let analise = selecionarTemporadaAdequada(epAbsolute, duracaoMinutos, ehFilme, animeDetectado ? animeDetectado.title : "");
-        if (!analise || !totalEpisodiosAnime || totalEpisodiosAnime === 0) return;
+            if (!isCorrecaoManual) {
+                let analise = selecionarTemporadaAdequada(epAbsolute, duracaoMinutos, ehFilme, termoBuscaOriginal);
+                if (analise && totalEpisodiosAnime > 0) {
+                    episodioRelativoAtual = analise.relativo;
+                }
+            } else {
+                episodioRelativoAtual = epAbsolute - offsetManualFix;
+                if (episodioRelativoAtual <= 0) episodioRelativoAtual = epAbsolute;
+            }
+        }
 
-        let epRelativo = analise.relativo;
+        let epRelativo = episodioRelativoAtual;
 
         if (cfgAutoUpdateProgress && !malProgressoSincronizado && !bloquearEnvio && animeDetectado && animeDetectado.mal_id && video.duration > 0) {
             let alcancouGatilho = false;
 
-            if (cfgAutoUpdateTrigger === '15min') {
-                alcancouGatilho = video.currentTime >= 900;
-            } else if (cfgAutoUpdateTrigger === '5min_left') {
-                alcancouGatilho = (video.duration - video.currentTime <= 300) && video.duration > 300;
+            if (cfgAutoUpdateTrigger === '85percent') {
+                alcancouGatilho = (video.currentTime / video.duration) >= 0.85;
+            } else if (cfgAutoUpdateTrigger === '90percent') {
+                alcancouGatilho = (video.currentTime / video.duration) >= 0.9;
             } else {
                 alcancouGatilho = (video.currentTime / video.duration) >= 0.8;
             }
@@ -271,34 +534,14 @@ function detectarEpisodioAtual() {
     let numeroEncontrado = null;
     
     // Netflix
+    // Netflix
     if (url.includes("netflix.com")) {
         let metaNetflix = extrairMetadadosNetflix();
-        
-        // MÁGICA 1: Tenta ler o Cache Invisível extraído da Memória RAM
         if (metaNetflix && metaNetflix.episode) {
-            numeroEncontrado = metaNetflix.episode;
-            numeroEpisodioAtual = numeroEncontrado;
-            // LOG REMOVIDO PARA EVITAR LOOP
-            return numeroEncontrado;
+            numeroEpisodioAtual = metaNetflix.episode;
+            return numeroEpisodioAtual;
         }
-
-        // Fallback: Lê a tela se o cache falhar ou demorar
-        let tituloContainer = document.querySelector('[data-uia="video-title"]');
-        if (tituloContainer) {
-            let spans = tituloContainer.querySelectorAll('span');
-            for (let span of spans) {
-                let match = span.innerText.match(/E\s*:?\s*(\d+)/i) || 
-                            span.innerText.match(/Episódio\s*(\d+)/i) || 
-                            span.innerText.match(/Episode\s*(\d+)/i) || 
-                            span.innerText.match(/Ep\.\s*(\d+)/i);
-                if (match) {
-                    numeroEncontrado = parseInt(match[1]);
-                    break;
-                }
-            }
-        }
-        if (numeroEncontrado) numeroEpisodioAtual = numeroEncontrado;
-        else numeroEncontrado = numeroEpisodioAtual;
+        return numeroEpisodioAtual;
     }
     // CRUNCHYROLL
     else if (url.includes("crunchyroll.com")) {
@@ -509,7 +752,7 @@ function injetarCSSDiscreto() {
         }
         #mal-tracking-toast.micro-mode #micro-progress-fill { opacity: 1; }
 
-        .btn-wrong-anime { background: transparent; color: #ff7675; border: none; font-size: 11px; cursor: pointer; padding: 0; margin-top: 8px; transition: color 0.2s; }
+        .btn-wrong-anime { background: transparent; color: #ff8484; border: none; font-size: 11px; cursor: pointer; padding: 0; margin-top: 8px; transition: color 0.2s; }
         .btn-wrong-anime:hover { text-decoration: underline; color: #d63031; }
         #overlay-timer-bar { position: absolute; top: 0; left: 0; height: 4px; background: #00b894; width: 100%; transform-origin: left; transition: transform linear; z-index: 5; }
 
@@ -603,11 +846,21 @@ function fecharToastCompletamente() {
     }
 }
 
-function mostrarToastRastreio(anime, epAtual, epTotal) {
-    if (window.cfgEnableTrackingToast === false) return;
-
+function fecharToastCompletamente() {
+    isToastDismissed = true;
     let toast = document.getElementById('mal-tracking-toast');
-    if (toast) toast.remove(); 
+    if (toast) {
+        toast.classList.remove('mostrar', 'micro-mode', 'hover-mode', 'flash-mode');
+        setTimeout(() => toast.remove(), 400);
+    }
+}
+
+function mostrarToastRastreio(anime, epAtual, epTotal) {
+    if (window.cfgEnableToastExp === false) return;
+
+    // Remove qualquer toast antigo preso na tela
+    let toastAntigo = document.getElementById('mal-tracking-toast');
+    if (toastAntigo) toastAntigo.remove(); 
     
     isToastMicro = false;
     isHoverMode = false;
@@ -615,11 +868,19 @@ function mostrarToastRastreio(anime, epAtual, epTotal) {
 
     let pctTemporada = (epTotal > 0 && epAtual <= epTotal) ? (epAtual / epTotal) * 100 : 100;
 
+    // === EXTRAÇÃO DE ANO, ESTÚDIO E FORMATO ===
+    let anoToast = anime.year || (anime.aired && anime.aired.prop && anime.aired.prop.from && anime.aired.prop.from.year) || "TBA";
+    let nomeEstudio = anime.studio || (anime.studios && anime.studios.length > 0 ? anime.studios[0].name : "");
+    let estudioToast = nomeEstudio ? ` • ${nomeEstudio}` : "";
+    let formatoToast = anime.media_type ? anime.media_type.toUpperCase() : "TV";
+    let infoExtra = `${anoToast}${estudioToast} • ${formatoToast}`;
+
+    // === EXTRAÇÃO DA TEMPORADA ===
+    let txtTemporada = (netflixTemporadaSalva) ? `Temporada ${netflixTemporadaSalva} • ` : "";
+
     injetarCSSDiscreto();
     let div = document.createElement('div');
     div.id = 'mal-tracking-toast';
-    
-    // Adicionado fallback 'medium' caso o banco de dados atrase 1 milissegundo
     div.className = `size-exp-${window.cfgSizeToastExp || 'medium'} size-micro-${window.cfgSizeToastMicro || 'medium'} size-flash-${window.cfgSizeToastFlash || 'medium'}`;
     
     div.innerHTML = `   
@@ -630,14 +891,11 @@ function mostrarToastRastreio(anime, epAtual, epTotal) {
                 <button class="toast-btn-top toast-close-x" title="Fechar Rastreio">X</button>
             </div>
             <div style="display: flex; gap: 10px; align-items: center; margin-top: 4px;">
-                <!-- MÁGICA: Adicionada a classe toast-img-capa -->
-                <img class="toast-img-capa" src="${anime.images.jpg.small_image_url}" style="width: 35px; height: 50px; border-radius: 4px; object-fit: cover;">
+                <img class="toast-img-capa" src="${anime.images?.jpg?.small_image_url || ''}" style="width: 35px; height: 50px; border-radius: 4px; object-fit: cover;">
                 <div style="flex-grow: 1; min-width: 0; padding-right: 40px;">
                     <div class="toast-monitor-label" style="font-size: 10px; color: #00b894; font-weight: bold; text-transform: uppercase;">Monitorando Anime</div>
-                    <!-- MÁGICA: Adicionada a classe toast-text-title -->
                     <div class="toast-text-title" style="font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${anime.title}</div>
-                    <!-- MÁGICA: Adicionada a classe toast-text-sub -->
-                    <div class="toast-text-sub" style="font-size: 11px; color: #aaa;">Episódio ${epAtual} / ${epTotal || '?'}</div>
+                    <div class="toast-text-sub" style="font-size: 11px; color: #aaa;">${txtTemporada}Episódio ${epAtual} / ${epTotal || '?'}</div>
                 </div>
             </div>
             <div class="toast-progress-bg season-progress-container">
@@ -646,17 +904,19 @@ function mostrarToastRastreio(anime, epAtual, epTotal) {
             <div class="toast-progress-bg episode-progress-container" style="height: 6px;">
                 <div class="toast-progress-fill-ep hover-episode-fill"></div>
             </div>
-            <div style="display: flex; justify-content: flex-end;">
-                <button id="btnWrongAnime" class="btn-wrong-anime">Anime errado?</button>
+            
+            <!-- RODAPÉ DO TOAST -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                <span style="font-size: 10px; color: #888; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;" title="${infoExtra}">${infoExtra}</span>
+                <button id="btnWrongAnime" class="btn-wrong-anime">Anime/Episódio errado?</button>
             </div>
         </div>
         <div id="micro-progress-fill"></div>
     `;
     
-    // --- O PULO DO GATO: Lógica de Tela Cheia Dinâmica ---
+    // Fixação inteligente (Tela cheia vs Normal)
     const fixarNoContainerCerto = () => {
         let isFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
-        
         if (isFs && window.cfgShowFlashInFullscreen) {
             isFs.appendChild(div);
         } else {
@@ -664,10 +924,8 @@ function mostrarToastRastreio(anime, epAtual, epTotal) {
         }
     };
 
-    // Fixa ao criar a primeira vez
     fixarNoContainerCerto();
     
-    // Fica escutando: se o usuário entrar/sair de tela cheia, move o Toast junto!
     const listenerTelaCheia = () => {
         if (isToastDismissed) {
             document.removeEventListener('fullscreenchange', listenerTelaCheia);
@@ -677,37 +935,75 @@ function mostrarToastRastreio(anime, epAtual, epTotal) {
     };
     document.addEventListener('fullscreenchange', listenerTelaCheia);
 
-    // Anima a entrada
+    // === LÓGICA DE TEMPO E HOVER TOTALMENTE SEGURA E ISOLADA ===
+    
+    const collapse = () => {
+        if (isToastDismissed) return;
+        isToastMicro = true;
+        isHoverMode = false;
+        div.classList.remove('mostrar', 'hover-mode');
+        div.classList.add('micro-mode');
+    };
+
+    // Início da animação
     setTimeout(() => {
         div.classList.add('mostrar');
         startTimerBar(6000);
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(collapse, 6000);
     }, 50);
 
-    // BOTOES DE CONTROLE DO TOAST
-    div.querySelector('.toast-close-x').addEventListener('click', fecharToastCompletamente);
+    // Botões de cabeçalho
+    div.querySelector('.toast-close-x').addEventListener('click', () => {
+        isToastDismissed = true;
+        clearTimeout(toastTimeout);
+        div.classList.remove('mostrar', 'micro-mode', 'hover-mode', 'flash-mode');
+        setTimeout(() => div.remove(), 400);
+    });
     
     div.querySelector('.toast-collapse-btn').addEventListener('click', () => {
         clearTimeout(toastTimeout);
-        colapsarToast();
+        collapse();
     });
     
-    div.querySelector('#btnWrongAnime').addEventListener('click', () => {
-        chrome.storage.local.set({ isCorrectionMode: true }, () => {
-            chrome.runtime.sendMessage({ action: 'openSidePanel' }, (response) => {
-                if (!response || !response.success) {
-                    let btn = div.querySelector('#btnWrongAnime');
-                    btn.textContent = "Abra a extensão lá em cima ↗️";
-                    btn.style.color = "#a29bfe"; btn.style.textDecoration = "none";
-                    clearTimeout(toastTimeout);
-                    startTimerBar(5000);
-                    toastTimeout = setTimeout(() => { if(!isToastDismissed) colapsarToast(); }, 5000);
-                } else {
-                    fecharToastCompletamente();
-                }
+    // Botão de Correção (No rodapé)
+    let btnWrong = div.querySelector('#btnWrongAnime');
+    if (isCorrecaoManual || offsetManualFix !== 0) {
+        btnWrong.textContent = "Desfazer Correção";
+        btnWrong.style.color = "#a29bfe"; 
+        btnWrong.addEventListener('click', () => {
+            if (idPlataformaAtual) {
+                chrome.storage.local.remove("CORRECAO_" + idPlataformaAtual, () => {
+                    console.log("MAL Reviewer: Correção manual removida. Restaurando padrão.");
+                    isCorrecaoManual = false;
+                    offsetManualFix = 0;
+                    isToastDismissed = true;
+                    div.remove();
+                    resetarMonitoramento(); 
+                });
+            }
+        });
+    } else {
+        btnWrong.addEventListener('click', () => {
+            chrome.storage.local.set({ isCorrectionMode: true }, () => {
+                chrome.runtime.sendMessage({ action: 'openSidePanel' }, (response) => {
+                    if (!response || !response.success) {
+                        btnWrong.textContent = "Abra a extensão lá em cima ↗️";
+                        btnWrong.style.color = "#a29bfe"; 
+                        btnWrong.style.textDecoration = "none";
+                        clearTimeout(toastTimeout);
+                        startTimerBar(5000);
+                        toastTimeout = setTimeout(collapse, 5000);
+                    } else {
+                        isToastDismissed = true;
+                        div.remove();
+                    }
+                });
             });
         });
-    });
+    }
 
+    // Hover (Passar o mouse sobre a barra de progresso)
     div.addEventListener('mouseenter', () => {
         clearTimeout(toastTimeout);
         pauseTimerBar();
@@ -721,17 +1017,16 @@ function mostrarToastRastreio(anime, epAtual, epTotal) {
 
     div.addEventListener('mouseleave', () => {
         if (isHoverMode) {
-            startTimerBar(750);
-            toastTimeout = setTimeout(() => { if (!isToastDismissed) colapsarToast(); }, 750);
-        } else if (!isToastMicro) {
+            // Tempo rápido para fechar ao tirar o mouse do modo hover
+            startTimerBar(1000);
+            toastTimeout = setTimeout(collapse, 1000);
+        } else if (!isToastMicro && div.classList.contains('mostrar')) {
+            // Tempo normal se a pessoa passar e tirar o mouse logo no começo do episódio
             startTimerBar(3000);
-            toastTimeout = setTimeout(() => { if (!isToastDismissed) colapsarToast(); }, 3000);
+            toastTimeout = setTimeout(collapse, 3000);
         }
     });
-    
-    toastTimeout = setTimeout(colapsarToast, 6000);
 }
-
 function verificarSeJaTemNotaEExibir() {
     if (!animeDetectado) return;
     
@@ -769,57 +1064,51 @@ async function detectarNomeAnime() {
     
     // NETFLIX
     if (url.includes("netflix.com")) {
+        let matchId = document.location.pathname.match(/\/watch\/(\d+)/);
+        let videoId = matchId ? matchId[1] : null;
         
-        let nomeFinal = "";
-        let metaNetflix = extrairMetadadosNetflix();
-        
-        let sufixoSeason = "";
-        if (metaNetflix && metaNetflix.season > 1) {
-            let num = metaNetflix.season;
-            sufixoSeason = num === 2 ? " 2nd Season" : num === 3 ? " 3rd Season" : ` ${num}th Season`;
-        }
-
-        // Usa a nossa Memória Fotográfica (pega o nome mesmo se a UI estiver escondida!)
-        if (metaNetflix && metaNetflix.title) {
-            let nomeLimpo = metaNetflix.title.replace(/T\d+:?|Temporada \d+|Season \d+|Parte \d+/ig, "").replace(/-$/, "").trim();
-            nomeFinal = (nomeLimpo + sufixoSeason).trim();
-            
-            console.log("MAL Reviewer: Nome da Netflix recuperado da Memória:", nomeFinal);
-            return nomeFinal;
-        }
-
-        // TRUQUE DOS METADADOS (O SEO DA NETFLIX) - Só roda em último caso extremo se o vídeo não tiver título UI
-        let videoId = document.querySelector('[data-videoid]')?.getAttribute('data-videoid');
         if (videoId) {
-            try {
-                console.log("MAL Reviewer: Interface oculta e sem memória. Buscando fallback SEO...");
-                let response = await fetch(`https://www.netflix.com/title/${videoId}`);
-                let html = await response.text();
+            // Loop híbrido
+            for (let i = 0; i < 16; i++) { 
+                let metaTemporaria = extrairMetadadosNetflix();
                 
-                let parser = new DOMParser();
-                let doc = parser.parseFromString(html, 'text/html');
-                let tagTitulo = doc.querySelector('meta[property="og:title"]') || doc.querySelector('title');
-                
-                if (tagTitulo && (tagTitulo.content || tagTitulo.textContent)) {
-                    let textoCru = tagTitulo.content || tagTitulo.textContent;
-                    let nome = textoCru.replace(/Assistir /i, "").replace(/Watch /i, "")
-                                       .replace(/\(?Dublado\)?/i, "").replace(/\(?Legendado\)?/i, "")
-                                       .replace(/Em Português Brasileiro/i, "").replace(/Em Português/i, "")
-                                       .split('|')[0].split('-')[0].replace(/Netflix/i, "").trim();
-                                       
-                    if (nome.length > 0) {
-                        nomeFinal = (nome + sufixoSeason).trim();
-                        return nomeFinal;
-                    }
+                // MÁGICA RESTAURADA: Só passa se a SONDA confirmar o ID, OU se o clique previu a Temporada.
+                let memoriaConfirmada = (metaTemporaria && metaTemporaria.uniqueId === videoId);
+                let predicaoAtiva = (metaTemporaria && metaTemporaria.title && netflixPredicaoSeason);
+
+                if (memoriaConfirmada || predicaoAtiva) {
+                    break; 
                 }
-            } catch (err) { }
+                await new Promise(resolve => setTimeout(resolve, 250)); 
+            }
         }
 
-        if (document.title && document.title !== "Netflix") {
-            return (document.title.split('|')[0].replace(/- Netflix/i, "").trim() + sufixoSeason).trim();
+        let metaNetflix = extrairMetadadosNetflix();
+        if (!metaNetflix || !metaNetflix.title) return null;
+        
+        if (metaNetflix.uniqueId) {
+            idPlataformaAtual = "NETFLIX_" + metaNetflix.uniqueId;
         }
 
-        return null;
+        let nomeFinal = metaNetflix.title;
+        
+        if (metaNetflix.type === 'episode' && metaNetflix.season > 1) {
+            let num = metaNetflix.season;
+            let sufixoSeason = num === 2 ? " 2nd Season" : num === 3 ? " 3rd Season" : ` ${num}th Season`;
+            let nomeLimpo = nomeFinal.replace(/T\d+:?|Temporada \d+|Season \d+|Parte \d+/ig, "").replace(/-$/, "").trim();
+            nomeFinal = (nomeLimpo + sufixoSeason).trim();
+        }
+
+        ultimaTemporadaAssistida = metaNetflix.season;
+        ultimoEpisodioAssistido = metaNetflix.episode;
+        ultimoTotalEpisodios = totalEpisodiosAnime || ultimoTotalEpisodios; 
+
+        netflixPredicaoSeason = null;
+        netflixPredicaoEpisode = null;
+
+        let tipoParaLog = metaNetflix.type ? metaNetflix.type.toUpperCase() : "PREDIÇÃO/TIMEOUT";
+        console.log(`MAL Reviewer: [NETFLIX] Nome resolvido: "${nomeFinal}" | Status: ${tipoParaLog}`);
+        return nomeFinal;
     }
 
     // CRUNCHYROLL
@@ -995,21 +1284,18 @@ function buscarDadosNoJikan(termo) {
 function selecionarTemporadaAdequada(epAbsolute, duracaoVideoEmMinutos = 0, ehFilme = false, termoBusca = "") {
     if (!listaTemporadasDetectadas || listaTemporadasDetectadas.length === 0) return null;
 
-    // EXCEÇÕES
+    // EXCEÇÕES DIRETAS
     if (listaTemporadasDetectadas.length === 1 && listaTemporadasDetectadas[0].is_direct_id) {
         let anime = listaTemporadasDetectadas[0];
         animeDetectado = anime;
         totalEpisodiosAnime = anime.episodes || 1;
-        
         let epRelativo = anime.is_split_movie ? epAbsolute : 1; 
-        // LOG REMOVIDO PARA EVITAR LOOP
         return { anime: anime, total: totalEpisodiosAnime, relativo: epRelativo };
     }
 
-    // MODO FILME OU EPISÓDIO
+    // MODO FILME
     if (ehFilme) {
         let candidatos = listaTemporadasDetectadas;
-        
         let melhorFilme = null;
         let maiorPontuacao = -1;
 
@@ -1018,39 +1304,28 @@ function selecionarTemporadaAdequada(epAbsolute, duracaoVideoEmMinutos = 0, ehFi
 
         for (let temp of candidatos) {
             let pontuacao = 0;
-            let logMotivo = [];
-
             if (duracaoVideoEmMinutos > 0 && temp.duration > 0) {
                 let proporcao = duracaoVideoEmMinutos / temp.duration;
-                if (proporcao >= 0.8 && proporcao <= 1.25) { 
-                    pontuacao += 50; 
-                    logMotivo.push(`Duração Bateu (${temp.duration}m)`);
-                }
+                if (proporcao >= 0.8 && proporcao <= 1.25) pontuacao += 50; 
             }
-
             let titulos = [temp.title, ...(temp.alternative_titles || [])];
             let nomeParcialAplicado = false;
 
             for (let t of titulos) {
                 let nomeTemp = limpaString(t);
-                
                 if (nomeTemp === nomeAlvo) {
                     pontuacao += 100; 
-                    logMotivo.push("Nome Exato");
                     break;
                 } else if (!nomeParcialAplicado && (nomeTemp.includes(nomeAlvo) || nomeAlvo.includes(nomeTemp))) {
                     pontuacao += 30; 
-                    logMotivo.push("Nome Parcial");
                     nomeParcialAplicado = true;
                 }
             }
-
             if (pontuacao > maiorPontuacao) {
                 maiorPontuacao = pontuacao;
                 melhorFilme = temp;
             }
         }
-
         if (melhorFilme && maiorPontuacao > 0) {
             animeDetectado = melhorFilme;
             return { anime: melhorFilme, total: melhorFilme.episodes || 1, relativo: 1 };
@@ -1060,7 +1335,7 @@ function selecionarTemporadaAdequada(epAbsolute, duracaoVideoEmMinutos = 0, ehFi
         }
     }
 
-    // 2. MODO SÉRIE 
+    // MODO SÉRIE 
     let series = listaTemporadasDetectadas.filter(t => ['tv', 'ona'].includes(t.media_type));
     if (series.length === 0) series = listaTemporadasDetectadas; 
     
@@ -1072,68 +1347,104 @@ function selecionarTemporadaAdequada(epAbsolute, duracaoVideoEmMinutos = 0, ehFi
         return a.mal_id - b.mal_id;
     });
 
-    // --- A MÁGICA: CHECAGEM DE NUMERAÇÃO RESETADA ---
+    let temporadaSelecionada = series[0];
+    let numBuscado = null;
+    
+    // 1. Tenta achar a temporada no termo de busca (Ex: "2nd Season")
     let mTemp = termoBusca.toLowerCase().match(/(\d+)(?:nd|rd|th)\s*season|season\s*(\d+)/);
-    if (mTemp) {
-        let numBuscado = parseInt(mTemp[1] || mTemp[2]);
-        if (numBuscado > 1) { 
-            // Dicionário Romano de conversão
-            const romanMap = { 2: " ii", 3: " iii", 4: " iv", 5: " v", 6: " vi", 7: " vii", 8: " viii", 9: " ix" };
-            let roman = romanMap[numBuscado] || "";
+    if (mTemp) numBuscado = parseInt(mTemp[1] || mTemp[2]);
+    
+    // 2. Extrai da memória salva da Armadilha/Sonda
+    if (!numBuscado && window.location.href.includes("netflix.com") && netflixTemporadaSalva > 1) {
+        numBuscado = netflixTemporadaSalva;
+    }
 
-            let seriesFiltradas = series.filter(temp => {
-                let titulos = [temp.title, ...(temp.alternative_titles || [])].map(t => t.toLowerCase());
-                return titulos.some(t => {
-                    let limpo = t.replace(/[^a-z0-9]/g, "");
-                    
-                    // Checa também se o nome termina com o número romano (Ex: "DanMachi III")
-                    let endWithRoman = roman ? (t.endsWith(roman) || t.includes(roman + " ")) : false;
+    let offsetSelecionado = 0;
 
-                    return limpo.includes(`${numBuscado}ndseason`) ||
-                           limpo.includes(`${numBuscado}rdseason`) ||
-                           limpo.includes(`${numBuscado}thseason`) ||
-                           t.includes(`season ${numBuscado}`) ||
-                           t.includes(`season${numBuscado}`) ||
-                           t.includes(`part ${numBuscado}`) ||
-                           endWithRoman;
-                });
+    if (numBuscado > 1) {
+        const romanMap = { 2: " ii", 3: " iii", 4: " iv", 5: " v", 6: " vi", 7: " vii", 8: " viii", 9: " ix" };
+        let roman = romanMap[numBuscado] || "";
+
+        let foundIdx = series.findIndex(temp => {
+            let titulos = [temp.title, ...(temp.alternative_titles || [])].map(t => t.toLowerCase());
+            return titulos.some(t => {
+                let limpo = t.replace(/[^a-z0-9]/g, "");
+                let endWithRoman = roman ? (t.endsWith(roman) || t.includes(roman + " ")) : false;
+                return limpo.includes(`${numBuscado}ndseason`) ||
+                       limpo.includes(`${numBuscado}rdseason`) ||
+                       limpo.includes(`${numBuscado}thseason`) ||
+                       t.includes(`season ${numBuscado}`) ||
+                       t.includes(`season${numBuscado}`) ||
+                       t.includes(`part ${numBuscado}`) ||
+                       endWithRoman;
             });
-            if (seriesFiltradas.length > 0) {
-                series = seriesFiltradas;
-                // LOG REMOVIDO PARA EVITAR LOOP
+        });
+
+        if (foundIdx === -1 && series.length >= numBuscado) {
+            foundIdx = numBuscado - 1;
+        }
+
+        if (foundIdx !== -1) {
+            temporadaSelecionada = series[foundIdx];
+            for (let i = 0; i < foundIdx; i++) {
+                offsetSelecionado += series[i].episodes || 12;
             }
         }
     }
 
-    let acumuladorEps = 0;
-    let temporadaSelecionada = series[0];
+    if (!numBuscado) {
+        let acumuladorEps = 0;
+        for (let i = 0; i < series.length; i++) {
+            let temp = series[i];
+            let limiteInferior = acumuladorEps + 1;
+            let limiteSuperior = acumuladorEps + (temp.episodes || 12);
 
-    for (let i = 0; i < series.length; i++) {
-        let temp = series[i];
-        let limiteInferior = acumuladorEps + 1;
-        let limiteSuperior = acumuladorEps + (temp.episodes || 12);
-
-        if (epAbsolute >= limiteInferior && epAbsolute <= limiteSuperior) {
-            temporadaSelecionada = temp;
-            break;
+            if (epAbsolute >= limiteInferior && epAbsolute <= limiteSuperior) {
+                temporadaSelecionada = temp;
+                offsetSelecionado = acumuladorEps;
+                break;
+            }
+            acumuladorEps = limiteSuperior;
         }
-        acumuladorEps = limiteSuperior;
     }
 
     animeDetectado = temporadaSelecionada;
     totalEpisodiosAnime = temporadaSelecionada ? (temporadaSelecionada.episodes || 0) : 0;
     
-    let offset = 0;
-    if (temporadaSelecionada) {
-        for (let i = 0; i < series.length; i++) {
-            let temp = series[i];
-            if (temp.mal_id === temporadaSelecionada.mal_id) break;
-            offset += temp.episodes || 12;
+    let epRelativo = epAbsolute;
+
+    // =======================================================================
+    // 🧰 DICIONÁRIO MANUAL DE OFFSETS (EPISÓDIOS CONTÍNUOS)
+    // Se a Netflix continuar contando do ep 12, 13, 14, mas o AniList separa
+    // em "Season 2", adicione o nome do anime e quanto você precisa subtrair.
+    // =======================================================================
+    const dicionarioManualOffsets = [
+        { titulo: "oshi no ko", temporadaNetflix: 2, subtrair: 11 }
+        // Exemplo: se houver T3 começando no ep 25: { titulo: "oshi no ko", temporadaNetflix: 3, subtrair: 24 }
+    ];
+
+    let offsetManual = null;
+    let nomeLimpoBusca = termoBusca.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+
+    for (let regra of dicionarioManualOffsets) {
+        let tituloRegra = regra.titulo.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+        if (nomeLimpoBusca.includes(tituloRegra) && numBuscado === regra.temporadaNetflix) {
+            offsetManual = regra.subtrair;
+            break;
         }
     }
-    
-    let epRelativo = epAbsolute - offset;
-    if (epRelativo <= 0) epRelativo = 1; 
+
+    // Aplica o Offset Manual se existir, caso contrário, tenta a matemática automática
+    if (offsetManual !== null) {
+        console.log(`MAL Reviewer: 🧰 Dicionário Manual acionado! Subtraindo ${offsetManual} episódios.`);
+        epRelativo = epAbsolute - offsetManual;
+    } 
+    else if (epAbsolute > offsetSelecionado && offsetSelecionado > 0) {
+        // Offset automático (se o AniList tiver mandado as temporadas anteriores junto)
+        epRelativo = epAbsolute - offsetSelecionado;
+    } 
+
+    if (epRelativo <= 0) epRelativo = 1;
     
     return { anime: animeDetectado, total: totalEpisodiosAnime, relativo: epRelativo };
 }
@@ -1303,43 +1614,88 @@ function normalizarCriterio(nome) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "SOLICITAR_NOME_ANIME") {
         let epAbsVal = detectarEpisodioAtual();
-        let ehFilme = epAbsVal === null;
         let epAbs = epAbsVal || 1;
         
-        let video = document.querySelector('video');
-        let duracaoMin = video && video.duration && !isNaN(video.duration) ? (video.duration / 60) : 0;
-        let epRel = epAbs;
-        
         if (animeDetectado && animeDetectado.title) {
-            if (listaTemporadasDetectadas && listaTemporadasDetectadas.length > 0) {
-                let analise = selecionarTemporadaAdequada(epAbs, duracaoMin, ehFilme, animeDetectado.title);
-                if (analise) epRel = analise.relativo;
-            }
-            
             sendResponse({ 
                 nome: animeDetectado.title, 
-                epAtual: epRel,
+                epAtual: episodioRelativoAtual,
                 animeExato: animeDetectado 
             });
         } 
         else {
             detectarNomeAnime().then(nomeEncontrado => {
-                sendResponse({ nome: nomeEncontrado, epAtual: epRel });
+                sendResponse({ nome: nomeEncontrado, epAtual: epAbs });
             });
             return true;
         }
     }
+    
     if (request.action === "FORCAR_CORRECAO_ANIME" && request.animeExato) {
         console.log("MAL Reviewer: Correção manual recebida! Alterando rastreio para:", request.animeExato.title);
         animeDetectado = request.animeExato;
         totalEpisodiosAnime = animeDetectado.episodes || 1;
+        isCorrecaoManual = true; 
         
         let epAbs = detectarEpisodioAtual() || 1;
         malProgressoSincronizado = false; 
         
-        mostrarToastRastreio(animeDetectado, epAbs, totalEpisodiosAnime);
+        // Verifica o dicionário manual primeiro
+        let offset = 0;
+        let nomeLimpoBusca = animeDetectado.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+        const dicionarioManualOffsets = [ { titulo: "oshi no ko", temporadaNetflix: 2, subtrair: 11 } ];
+        
+        for (let regra of dicionarioManualOffsets) {
+            let tituloRegra = regra.titulo.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+            // Usa as armadilhas para saber se é a temporada certa do dicionário
+            if (nomeLimpoBusca.includes(tituloRegra) && (netflixPredicaoSeason === regra.temporadaNetflix || netflixTemporadaSalva === regra.temporadaNetflix)) {
+                offset = regra.subtrair;
+                break;
+            }
+        }
+
+        offsetManualFix = offset;
+        let epRel = epAbs - offsetManualFix;
+        if (epRel <= 0) epRel = epAbs;
+        episodioRelativoAtual = epRel;
+
+        if (idPlataformaAtual) {
+            let memoriaObj = {};
+            memoriaObj["CORRECAO_" + idPlataformaAtual] = {
+                anime: animeDetectado,
+                offset: offset,
+                forcedOffset: offset
+            };
+            chrome.storage.local.set(memoriaObj);
+        }
+
+        mostrarToastRastreio(animeDetectado, epRel, totalEpisodiosAnime);
         sendResponse({success: true});
     }
+    
+    // AÇÃO NOVA: Correção direta do número do episódio!
+    if (request.action === "FORCAR_EPISODIO") {
+        let epAbs = detectarEpisodioAtual() || 1;
+        
+        // Se a Netflix diz que é o 14, e você digita que é o 3. O Script faz: 14 - 3 = Offset 11.
+        offsetManualFix = epAbs - request.ep; 
+        
+        if (idPlataformaAtual) {
+            chrome.storage.local.get(["CORRECAO_" + idPlataformaAtual], (res) => {
+                let dadosSalvos = res["CORRECAO_" + idPlataformaAtual] || { anime: animeDetectado };
+                dadosSalvos.forcedOffset = offsetManualFix;
+                let obj = {};
+                obj["CORRECAO_" + idPlataformaAtual] = dadosSalvos;
+                chrome.storage.local.set(obj);
+            });
+        }
+        episodioRelativoAtual = request.ep;
+        isCorrecaoManual = true; // Ativa a trava
+        malProgressoSincronizado = false;
+        mostrarToastRastreio(animeDetectado, request.ep, totalEpisodiosAnime);
+        sendResponse({success: true});
+    }
+    
     if (request.action === "CANCELAR_CORRECAO") {
         let btn = document.getElementById('btnWrongAnime');
         if (btn) {
@@ -1352,39 +1708,66 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 
 
-// EXTRAI DADOS INVISÍVEIS DA NETFLIX (Lendo a memória global)
-// EXTRAI DADOS INVISÍVEIS DA NETFLIX (Lendo a memória global)
+// EXTRAI DADOS INVISÍVEIS DA NETFLIX (Híbrido + Preditivo)
+// EXTRAI DADOS INVISÍVEIS DA NETFLIX (Híbrido + Preditivo)
 function extrairMetadadosNetflix() {
-    let videoId = document.querySelector('[data-videoid]')?.getAttribute('data-videoid');
+    let matchId = document.location.pathname.match(/\/watch\/(\d+)/);
+    let videoId = matchId ? matchId[1] : null;
     if (!videoId) return null;
 
-    // Se mudou de episódio/série, reseta a nossa memória fotográfica
-    if (videoId !== videoIdAtual) {
-        netflixTituloSalvo = "";
-        netflixTemporadaSalva = null;
-        netflixEpisodioSalvo = null;
-    }
-
-    // Salva o título da interface (Ele aparece por 3s quando o vídeo começa. Nós gravamos pra sempre!)
-    let tituloElement = document.querySelector('[data-uia="video-title"] h4') || document.querySelector('[data-uia="video-title"]');
-    if (tituloElement && tituloElement.textContent) {
-        netflixTituloSalvo = tituloElement.textContent.replace(/[【】]/g, "").trim();
-    }
-
-    // 👉 A MÁGICA: Lê os dados que a sonda (que rodou no mundo MAIN) escreveu no HTML
+    let cacheData = null;
     let sondaDiv = document.getElementById('mal-reviewer-netflix-data');
-    if (sondaDiv && sondaDiv.innerText) {
-        try {
-            let cacheData = JSON.parse(sondaDiv.innerText);
-            if (cacheData.season) netflixTemporadaSalva = cacheData.season;
-            if (cacheData.episode) netflixEpisodioSalvo = cacheData.episode;
-        } catch(e) {}
+    
+    // Só lê a memória se a sonda já achou os dados do VÍDEO ATUAL
+    if (sondaDiv && sondaDiv.getAttribute('data-video') === videoId) {
+        try { cacheData = JSON.parse(sondaDiv.innerText); } catch(e) {}
     }
 
-    // Se a sonda conseguiu achar dados, retorna eles com o título!
+    let nomeExtraido = netflixTitleTrap;
+
+    if (cacheData) {
+        if (cacheData.type === 'movie' && cacheData.movieTitle) {
+            nomeExtraido = cacheData.movieTitle;
+        } else if ((cacheData.type === 'show' || cacheData.type === 'episode') && cacheData.showTitle) {
+            nomeExtraido = cacheData.showTitle;
+        }
+    }
+
+    netflixTituloSalvo = nomeExtraido || netflixTituloSalvo;
+
+    // Quem tem os dados agora? (Hierarquia de confiança)
+    let tempEncontrada = (cacheData && cacheData.season) || netflixPredicaoSeason || netflixSeasonTrap;
+    let epEncontrado = (cacheData && cacheData.episode) || netflixPredicaoEpisode || netflixEpisodeTrap;
+
+    // ==== O SISTEMA DE MEMÓRIA MATEMÁTICO ====
+    // Se a Netflix apagou a temporada da tela, mas nos deu o número do episódio:
+    if (!tempEncontrada && netflixTemporadaSalva && epEncontrado) {
+        if (netflixEpisodioSalvo && epEncontrado < netflixEpisodioSalvo) {
+            // O episódio diminuiu bruscamente (ex: 12 para 1) e não houve clique manual capturado.
+            // Conclusão lógica: O Auto-play avançou de temporada!
+            console.log(`MAL Reviewer: 🧠 [SISTEMA DE MEMÓRIA] Episódio resetou de ${netflixEpisodioSalvo} para ${epEncontrado}. Avançando temporada!`);
+            netflixTemporadaSalva += 1;
+            tempEncontrada = netflixTemporadaSalva;
+        } else {
+            // Se apenas avançou normalmente (Ex: 2 para 3), mantém a mesma temporada da memória.
+            tempEncontrada = netflixTemporadaSalva;
+        }
+    }
+
+    // Salva o resultado final na memória de longo prazo
+    netflixTemporadaSalva = tempEncontrada || netflixTemporadaSalva;
+    netflixEpisodioSalvo = epEncontrado || netflixEpisodioSalvo;
+    
+    // CORREÇÃO CRÍTICA: Nunca força o uniqueId. Se o cache não processou, fica null!
+    netflixUniqueIdSalvo = cacheData ? cacheData.uniqueId : null;
+
+    let tipoSalvo = (cacheData && cacheData.type) ? cacheData.type : (netflixEpisodioSalvo ? 'episode' : null);
+
     return {
         title: netflixTituloSalvo,
+        type: tipoSalvo,
         season: netflixTemporadaSalva,
-        episode: netflixEpisodioSalvo
+        episode: netflixEpisodioSalvo,
+        uniqueId: netflixUniqueIdSalvo
     };
 }

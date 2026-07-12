@@ -3,502 +3,385 @@
 <head>
     <meta charset="UTF-8">
     <title>Configurações - MAL Reviewer</title>
-    <style>
-        body { background: #1a1a1d; color: white; font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; padding-bottom: 100px; }
-        h2 { color: #6c5ce7; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        .section { background: #2d2d33; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        label { cursor: pointer; }
-        
-        /* Botões Gerais */
-        #btnLogin { background: #2e51a2; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        #btnLogin:disabled { background: #444; cursor: default; }
-        
-        /* Checkbox bonito */
-        input[type=checkbox] { transform: scale(1.2); cursor: pointer; }
-        
-        .status { font-size: 12px; margin-top: 5px; }
-        .logged-in { color: #00b894; }
-        .logged-out { color: #ff7675; }
-
-        /* Botão Ver Biblioteca no Options */
-        #btnVerBibliotecaOptions {
-            width: 100%;
-            background: #202024;
-            color: white;
-            border: 1px solid #444;
-            padding: 10px;
-            cursor: pointer;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: bold;
-            transition: all 0.2s ease;
-            margin-top: 5px;
-        }
-        #btnVerBibliotecaOptions:hover {
-            background: #3a3a42;
-            border-color: #6c5ce7;
-            transform: translateY(-1px);
-        }
-
-        /* Animações e Estilos dos Critérios */
-        #listaCriterios .row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            padding: 10px 15px;
-            border-radius: 6px;
-            background: #202024;
-            border: 1px solid #333;
-            transition: all 0.25s ease-in-out;
-            border-left: 4px solid transparent;
-        }
-
-        /* Efeito Hover nos itens da lista de critérios */
-        #listaCriterios .row:hover {
-            background: #2b2b30;
-            border-color: #6c5ce7;
-            transform: translateX(6px);
-            border-left-color: #6c5ce7;
-            box-shadow: 0 4px 12px rgba(108, 92, 231, 0.15);
-        }
-
-        #listaCriterios span {
-            font-size: 14px;
-            font-weight: 500;
-            color: #e0e0e0;
-            transition: color 0.25s ease;
-        }
-
-        #listaCriterios .row:hover span {
-            color: #6c5ce7;
-        }
-
-        #listaCriterios button {
-            transition: transform 0.2s ease, filter 0.2s ease;
-        }
-        #listaCriterios button:hover {
-            transform: scale(1.25);
-            filter: drop-shadow(0 0 5px rgba(255,118,117,0.5));
-        }
-
-        /* Estilos do Bloco de Atualização / Backup */
-        .batch-btn {
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 12px;
-            transition: transform 0.15s ease, filter 0.15s ease;
-        }
-        .batch-btn:hover {
-            transform: translateY(-2px);
-            filter: brightness(1.1);
-        }
-        #btnBatchUpdate { background: #e84118; color: white; }
-        #btnRestoreBackup { background: #2e51a2; color: white; margin-left: 10px; }
-
-        /* Barra de Salvamento Estilo Discord */
-        #discordSaveBar {
-            position: fixed;
-            bottom: -85px; /* escondido por padrão */
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 560px;
-            background: #111214;
-            border: 1px solid #6c5ce7;
-            border-radius: 8px;
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-            transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 9999;
-        }
-        #discordSaveBar span {
-            font-size: 13.5px;
-            font-weight: bold;
-            color: #ffffff;
-        }
-        #discordSaveBar .button-group {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-        #discordSaveBar button {
-            border: none;
-            border-radius: 4px;
-            padding: 8px 16px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 13px;
-            transition: transform 0.1s, filter 0.15s;
-        }
-        #discordSaveBar button:active {
-            transform: scale(0.96);
-        }
-        #btnDescartarCriterios {
-            background: transparent;
-            color: #ff7675;
-        }
-        #btnDescartarCriterios:hover {
-            text-decoration: underline;
-        }
-        #btnSalvarCriterios {
-            background: #248046;
-            color: white;
-        }
-        #btnSalvarCriterios:hover {
-            background: #1a6535;
-        }
-    </style>
+    <link rel="stylesheet" href="options.css">
 </head>
 <body>
 
     <h2>Integração MyAnimeList</h2>
     
-    <!-- ÁREA DE LOGIN -->
     <div id="loginContainer" class="section">
-        <p>Para enviar as notas automaticamente, faça login.</p>
+        <p style="font-size: 13px; margin-top:0;">Para enviar as notas automaticamente, faça login.</p>
         <button id="btnLogin">Conectar com MyAnimeList</button>
         <p id="loginStatus" class="status logged-out">Desconectado</p>
     </div>
 
-    <!-- ÁREA DE PERFIL -->
-    <div class="section" id="perfilArea" style="display: none; flex-direction: column; gap: 15px;">
+    <div class="section" id="perfilArea" style="display: none; flex-direction: column; gap: 12px;">
         <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px; width: 100%;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <img id="userImg" src="" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #6c5ce7; object-fit: cover;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <img id="userImg" src="" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #6c5ce7; object-fit: cover;">
                 <div>
-                    <strong id="userName"></strong><br>
-                    <span style="font-size: 12px; color: #00b894;">Conectado ao MyAnimeList</span>
+                    <strong id="userName" style="font-size: 14px;"></strong><br>
+                    <span style="font-size: 11px; color: #00b894;">Conectado ao MyAnimeList</span>
                 </div>
             </div>
-            <button id="btnLogout" style="background: #ff7675; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: bold;">Desvincular</button>
+            <button id="btnLogout" style="background: #ff7675; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">Desvincular</button>
         </div>
-        
-        <!-- Botão Biblioteca (Options) -->
         <button id="btnVerBibliotecaOptions">📂 Ver Minha Biblioteca</button>
     </div>
 
-    <h2>Preferências</h2>
-    <div class="section">
-        <div class="row">
-            <label for="autoOpen">Abrir janela automaticamente no fim do episódio</label>
-            <input type="checkbox" id="autoOpen" checked>
-        </div>
-
+    <h2>Preferências Principais</h2>
+    <div style="margin-bottom: 20px;">
+        
         <!-- OPÇÃO DE MODO DE EXIBIÇÃO -->
-        <div class="row" style="margin-bottom: 15px;">
-            <div style="max-width: 70%;">
-                <label for="viewMode">Modo de Exibição da Extensão</label>
-                <div id="viewModeHelp" style="font-size: 11px; color: #ff7675; display: none; margin-top: 4px;"></div>
+        <div class="setting-card" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                <div class="setting-info">
+                    <span class="setting-title">Modo de Exibição da Extensão</span>
+                </div>
+                <select id="viewMode" class="modern-select">
+                    <option value="popup">Janela Flutuante (Popup)</option>
+                    <option value="sidepanel">Barra Lateral (Side Panel)</option>
+                </select>
             </div>
-            <select id="viewMode" style="background: #1a1a1d; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; cursor: pointer;">
-                <option value="popup">Janela Flutuante (Popup)</option>
-                <option value="sidepanel">Barra Lateral (Side Panel)</option>
-            </select>
+            <div id="viewModeHelp" class="warning-text" style="display: none; margin: 0; width: 100%;"></div>
         </div>
 
-        <div class="row">
-            <label for="syncMal">Sincronizar notas com o MAL</label>
-            <input type="checkbox" id="syncMal">
-        </div>
-
-        <!-- CONTAINER DO PROGRESSO DO MAL (Só visível se syncMal estiver ativo) -->
-        <div id="malSyncContainer" style="margin-left: 20px; border-left: 2px solid #6c5ce7; padding-left: 15px; display: none; flex-direction: column; gap: 15px; margin-bottom: 15px;">
-            <div class="row" style="margin-bottom: 0;">
-                <label for="autoUpdateProgress">Atualizar progresso de episódios automaticamente</label>
-                <input type="checkbox" id="autoUpdateProgress" checked>
+        <label class="setting-card" style="cursor: pointer;">
+            <div class="setting-info">
+                <span class="setting-title">Abrir extensão automaticamente <i class="info-icon" data-tooltip="Abre a aba de avaliação na tela automaticamente ao entrar no último episódio.">i</i></span>
             </div>
+            <div class="toggle"><input type="checkbox" id="autoOpen"><span class="slider"></span></div>
+        </label>
 
-            <!-- SUB-PREFERÊNCIAS DO PROGRESSO (Só visíveis se autoUpdateProgress estiver ativo) -->
-            <div id="progressSettingsContainer" style="margin-left: 20px; border-left: 2px dashed #444; padding-left: 15px; display: none; flex-direction: column; gap: 15px;">
-                <div class="row" style="margin-bottom: 0;">
-                    <label for="autoUpdateTrigger">Quando disparar a sincronização:</label>
-                    <select id="autoUpdateTrigger" style="background: #1a1a1d; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; cursor: pointer;">
+        <!-- BLOCO MAL -->
+        <label class="setting-card" style="cursor: pointer; z-index: 2; position: relative;">
+            <div class="setting-info">
+                <span class="setting-title">Sincronizar com o MyAnimeList <i class="info-icon" data-tooltip="Atualiza seu progresso e notas oficiais no MAL em tempo real.">i</i></span>
+            </div>
+            <div class="toggle"><input type="checkbox" id="syncMal"><span class="slider"></span></div>
+        </label>
+
+        <!-- Sub-opções do MAL -->
+        <div id="malSyncContainer" class="nested-settings-box" style="display: none;">
+            
+            <label class="setting-card" style="cursor: pointer; padding: 8px 10px;">
+                <div class="setting-info">
+                    <span class="setting-title" style="font-size: 13px; color:#eee;">Atualizar progresso de episódios automaticamente</span>
+                </div>
+                <div class="toggle"><input type="checkbox" id="autoUpdateProgress"><span class="slider"></span></div>
+            </label>
+
+            <div id="progressSettingsContainer" style="margin-left: 20px; border-left: 2px dashed #444; padding-left: 12px; display: none; flex-direction: column; gap: 8px;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0;">
+                    <span style="font-size: 12px; color:#ccc;">Quando disparar a sincronização:</span>
+                    <select id="autoUpdateTrigger" class="modern-select" style="padding: 4px 8px;">
                         <option value="80percent">Assistiu 80% do episódio (Recomendado)</option>
-                        <option value="15min">Assistiu pelo menos 15 minutos do anime</option>
-                        <option value="5min_left">Faltam 5 minutos para acabar o episódio</option>
+                        <option value="85percent">Assistiu 85% do episódio</option>
+                        <option value="90percent">Assistiu 90% do episódio</option>
                     </select>
                 </div>
-
-                <div class="row" style="margin-bottom: 0;">
-                    <div style="max-width: 80%;">
-                        <label for="autoCompleteOnLast">Definir automaticamente como completado no último episódio</label>
-                        <div style="font-size: 11px; color: #aaa;">
-                            Se marcado: Quando você assistir ao último episódio do anime, o status será alterado para "Completado" no MAL de forma automática.
-                        </div>
-                    </div>
-                    <input type="checkbox" id="autoCompleteOnLast" checked>
-                </div>
-
-                <div class="row" style="margin-bottom: 0;">
-                    <div style="max-width: 80%;">
-                        <label for="blockRegressionOnComplete">Bloquear regressão de progresso em animes completados</label>
-                        <div style="font-size: 11px; color: #aaa;">
-                            Se marcado: Caso o anime já esteja marcado como "Completado" no MAL, voltar os episódios para trás não alterará mais o status nem a nota.
-                        </div>
-                    </div>
-                    <input type="checkbox" id="blockRegressionOnComplete" checked>
-                </div>
-
-                <div class="row" style="margin-bottom: 0;">
-                    <div style="max-width: 80%;">
-                        <label for="autoOpenOverlayIfNoScore">Abrir aviso de nota se completado sem avaliação</label>
-                        <div style="font-size: 11px; color: #aaa;">
-                            Se marcado: Ao entrar no último episódio de um anime já completado no MAL que ainda não possui nota, o aviso de avaliação aparecerá automaticamente.
-                        </div>
-                    </div>
-                    <input type="checkbox" id="autoOpenOverlayIfNoScore" checked>
-                </div>
-            </div>
-        </div>
-
-        <div class="row" style="margin-bottom: 5px;">
-            <div style="max-width: 80%;">
-                <label for="officialScore">Usar Média Técnica como Nota Oficial</label>
-                <div style="font-size: 11px; color: #aaa;">
-                    Se marcado: A média (ex: 8.5) será arredondada (9) e enviada como nota principal.<br>
-                    Se desmarcado: A nota principal do MAL não é alterada.
-                </div>
-            </div>
-            <input type="checkbox" id="officialScore">
-        </div>
-
-        <!-- Área dinâmica de Atualização em Massa / Backup -->
-        <div id="batchUpdateArea" style="margin-top: 15px; border-top: 1px dashed #444; padding-top: 15px; display: none;">
-            <button id="btnBatchUpdate" class="batch-btn">🔄 Atualizar Notas Antigas</button>
-            <button id="btnRestoreBackup" class="batch-btn" style="display: none;">⏪ Restaurar Backup</button>
-            <div id="batchProgress" style="font-size: 12px; margin-top: 10px; color: #aaa; font-weight: bold; line-height: 1.4;"></div>
-        </div>
-
-        <!-- CONTROLES VISUAIS (TOASTS E POP-UPS) -->
-        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #444;">
-            <h4 style="margin-top: 0; color: #a29bfe; font-size: 13px; text-transform: uppercase;">Interface da Extensão no Vídeo</h4>
-            
-            <div class="row" style="margin-bottom: 5px;">
-                <label for="enableTrackingToast">Mostrar aviso de Rastreio de Episódio (Verde)</label>
-                <input type="checkbox" id="enableTrackingToast" checked>
-            </div>
-            
-            <div class="row" style="margin-bottom: 5px;">
-                <label for="showFlashInFullscreen">Permitir "✔️ Episódio Marcado" durante Tela Cheia</label>
-                <input type="checkbox" id="showFlashInFullscreen" checked>
-            </div>
-
-            <div class="row" style="margin-bottom: 5px;">
-                <label for="enableRatingOverlay">Mostrar painel de "Dar Nota" (Roxo) no fim da temporada</label>
-                <input type="checkbox" id="enableRatingOverlay" checked>
-            </div>
-        </div>
-
-        <!-- CONFIGURAÇÃO DE TAMANHOS COM SIMULADOR -->
-        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #444;">
-            <h4 style="margin-top: 0; color: #a29bfe; font-size: 13px; text-transform: uppercase;">Ajuste de Tamanhos</h4>
-            
-            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
-                <div style="flex: 1; min-width: 200px;">
-                    <label style="font-size: 12px; color: #aaa;">Toast de Rastreio (Verde)</label><br>
-                    <select id="sizeToastExp" style="width: 100%; background: #1a1a1d; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; margin-top: 4px;">
-                        <option value="small">Pequeno</option>
-                        <option value="medium">Médio (Padrão)</option>
-                        <option value="large">Grande</option>
-                    </select>
-                </div>
-                <div style="flex: 1; min-width: 200px;">
-                    <label style="font-size: 12px; color: #aaa;">Barra Colapsada (Meio)</label><br>
-                    <select id="sizeToastMicro" style="width: 100%; background: #1a1a1d; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; margin-top: 4px;">
-                        <option value="small">Pequeno</option>
-                        <option value="medium">Médio (Padrão)</option>
-                        <option value="large">Grande</option>
-                    </select>
-                </div>
-                <div style="flex: 1; min-width: 200px;">
-                    <label style="font-size: 12px; color: #aaa;">Aviso de Concluído (Flash)</label><br>
-                    <select id="sizeToastFlash" style="width: 100%; background: #1a1a1d; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; margin-top: 4px;">
-                        <option value="small">Pequeno</option>
-                        <option value="medium">Médio (Padrão)</option>
-                        <option value="large">Grande</option>
-                    </select>
-                </div>
-                <div style="flex: 1; min-width: 200px;">
-                    <label style="font-size: 12px; color: #aaa;">Painel de Avaliação (Roxo)</label><br>
-                    <select id="sizeOverlay" style="width: 100%; background: #1a1a1d; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; margin-top: 4px;">
-                        <option value="small">Pequeno</option>
-                        <option value="medium">Médio (Padrão)</option>
-                        <option value="large">Grande</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- TELA DE SIMULAÇÃO AO VIVO -->
-            <div id="simulator-container" style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; border: 2px solid #333; overflow: hidden; font-family: 'Segoe UI', sans-serif;">
                 
-                <div style="position: absolute; top: 10px; left: 10px; color: #555; font-size: 12px; font-weight: bold; text-transform: uppercase; z-index: 10;">Simulador de Tela</div>
-                
-                <!-- BOTÃO TELA CHEIA -->
-                <button id="btnSimFullscreen" title="Ver em Tela Cheia" style="position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.1); color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; z-index: 10; font-size: 12px; font-weight: bold; backdrop-filter: blur(4px); transition: 0.2s;">
-                    🔲 Tela Cheia
-                </button>
-
-                <div id="virtual-screen" style="position: absolute; top: 0; left: 0; width: 1280px; height: 720px; transform-origin: top left;">
-                    
-                    <!-- Simulador: Toast Expandido -->
-                    <div id="sim-toast-exp" class="sim-toast size-medium" style="position: absolute; bottom: 25px; left: 25px; background: rgba(20,20,25,0.95); border-left: 4px solid #00b894; border-radius: 8px; color: white; transition: all 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.6);">
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <div class="sim-img" style="background: #444; border-radius: 4px; transition: all 0.3s;"></div>
-                            <div style="flex-grow: 1;">
-                                <div class="sim-monitor-label" style="font-size: 10px; color: #00b894; font-weight: bold; transition: all 0.3s;">MONITORANDO ANIME</div>
-                                <div class="sim-title" style="font-weight: bold; transition: all 0.3s;">Kaguya-sama: Love Is War</div>
-                                <div class="sim-sub" style="color: #aaa; transition: all 0.3s;">Episódio 4 / 12</div>
-                            </div>
-                        </div>
-                        <!-- Adicionado o Progress Bar na Simulação -->
-                        <div class="sim-toast-progress" style="height: 4px; background: #333; margin-top: 10px; border-radius: 2px; overflow: hidden; transition: all 0.3s;">
-                            <div style="width: 80%; height: 100%; background: #00b894;"></div>
-                        </div>
+                <label class="setting-card" style="cursor: pointer; padding: 8px 10px; border: none; background: transparent;">
+                    <div class="setting-info" style="max-width: 85%;">
+                        <span class="setting-title" style="font-size: 12px; color:#ccc;">Definir automaticamente como completado no último episódio <i class="info-icon" data-tooltip="Se marcado: Quando você assistir ao último episódio do anime, o status será alterado para 'Completado' no MAL de forma automática.">i</i></span>
                     </div>
+                    <div class="toggle"><input type="checkbox" id="autoCompleteOnLast"><span class="slider"></span></div>
+                </label>
 
-                    <!-- Simulador: Barra Micro -->
-                    <div id="sim-toast-micro" class="sim-micro size-medium" style="position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); border-radius: 4px; transition: all 0.3s;">
-                        <div style="height: 100%; width: 60%; background: #00b894; border-radius: 4px;"></div>
+                <label class="setting-card" style="cursor: pointer; padding: 8px 10px; border: none; background: transparent;">
+                    <div class="setting-info" style="max-width: 85%;">
+                        <span class="setting-title" style="font-size: 12px; color:#ccc;">Bloquear regressão de progresso em animes completados <i class="info-icon" data-tooltip="Se marcado: Caso o anime já esteja marcado como 'Completado' no MAL, voltar os episódios para trás não alterará mais o status nem a nota.">i</i></span>
                     </div>
+                    <div class="toggle"><input type="checkbox" id="blockRegressionOnComplete"><span class="slider"></span></div>
+                </label>
 
-                    <!-- Simulador: Toast Flash -->
-                    <div id="sim-toast-flash" class="sim-flash size-medium" style="position: absolute; bottom: 85px; left: 25px; background: rgba(0, 184, 148, 0.9); color: white; transition: all 0.3s;">
-                        <span class="sim-flash-txt" style="font-weight: bold; transition: all 0.3s;">✔️ Episódio Marcado!</span>
+                <label class="setting-card" style="cursor: pointer; padding: 8px 10px; border: none; background: transparent;">
+                    <div class="setting-info" style="max-width: 85%;">
+                        <span class="setting-title" style="font-size: 12px; color:#ccc;">Abrir aviso de nota se completado sem avaliação <i class="info-icon" data-tooltip="Se marcado: Ao entrar no último episódio de um anime já completado no MAL que ainda não possui nota, o aviso de avaliação aparecerá automaticamente.">i</i></span>
                     </div>
+                    <div class="toggle"><input type="checkbox" id="autoOpenOverlayIfNoScore"><span class="slider"></span></div>
+                </label>
+            </div>
 
-                    <!-- Simulador: Overlay de Nota -->
-                    <div id="sim-overlay" class="sim-overlay size-medium" style="position: absolute; bottom: 25px; right: 25px; background: linear-gradient(145deg, rgba(20,20,25,0.95), rgba(30,30,40,0.95)); border: 1px solid rgba(108,92,231,0.3); border-top: 4px solid #6c5ce7; border-radius: 12px; color: white; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
-                        <div class="sim-ov-title" style="color: #a29bfe; font-weight: bold; margin-bottom: 10px; transition: all 0.3s;">FIM DE TEMPORADA!</div>
-                        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-                            <div class="sim-ov-img" style="background: #444; border-radius: 6px; transition: all 0.3s;"></div>
-                            <div>
-                                <div class="sim-ov-name" style="font-weight: bold; transition: all 0.3s;">Re:ZERO</div>
-                                <div class="sim-ov-sub" style="color: #aaa; transition: all 0.3s;">Deseja avaliar?</div>
-                            </div>
-                        </div>
-                        <div class="sim-ov-btn" style="background: #6c5ce7; text-align: center; border-radius: 6px; font-weight: bold; transition: all 0.3s;">AVALIAR OBRA</div>
+            <!-- OPÇÃO: USAR MÉDIA TÉCNICA -->
+            <div class="setting-card" style="flex-direction: column; align-items: flex-start; gap: 8px; border-color: #444; padding: 8px 10px;">
+                <label style="display: flex; justify-content: space-between; width: 100%; align-items: center; cursor: pointer;">
+                    <div class="setting-info" style="max-width: 85%;">
+                        <span class="setting-title" style="font-size: 13px; color:#eee;">Usar Média Técnica como Nota Oficial</span>
                     </div>
-
+                    <div class="toggle"><input type="checkbox" id="officialScore"><span class="slider"></span></div>
+                </label>
+                <div class="setting-desc" style="margin: 0; width: 100%; font-size: 11px; color: #aaa; opacity: 0.7;">
+                    ⚠️ Se marcado: A média (ex: 8.5) será arredondada (9) e enviada como nota principal. Se desmarcado: A nota principal do MAL não é alterada.
                 </div>
             </div>
-            
-            <!-- Estilos dos Tamanhos -->
-            <style>
-                #btnSimFullscreen:hover { background: rgba(255,255,255,0.2) !important; }
+            <!-- SEÇÃO AÇÕES EM LOTE (BACKUP E ATUALIZAÇÃO) -->
+            <div id="batchUpdateArea" style="display: none; margin-left: 20px; border-left: 2px dashed #6c5ce7; padding-left: 12px; margin-top: 5px; margin-bottom: 5px;">
+                <div style="color: #a29bfe; font-size: 12px; font-weight: bold; margin-bottom: 4px;">⚡ Atualização de Notas em Lote</div>
+                <div style="font-size: 11px; color: #aaa; margin-bottom: 10px;">Sincronize as notas técnicas presentes nos seus comentários para a nota oficial do MAL em toda a sua lista.</div>
                 
-                /* Toast Expandido */
-                #sim-toast-exp.size-small { width: 240px; padding: 10px; }
-                #sim-toast-exp.size-small .sim-img { width: 28px; height: 40px; }
-                #sim-toast-exp.size-small .sim-title { font-size: 11px; }
-                #sim-toast-exp.size-small .sim-sub { font-size: 9px; }
-                #sim-toast-exp.size-small .sim-monitor-label { font-size: 8px; }
-                #sim-toast-exp.size-small .sim-toast-progress { height: 2px !important; margin-top: 6px !important; }
-
-                #sim-toast-exp.size-medium { width: 290px; padding: 12px; }
-                #sim-toast-exp.size-medium .sim-img { width: 35px; height: 50px; }
-                #sim-toast-exp.size-medium .sim-title { font-size: 13px; }
-                #sim-toast-exp.size-medium .sim-sub { font-size: 11px; }
-                #sim-toast-exp.size-medium .sim-monitor-label { font-size: 10px; }
-                #sim-toast-exp.size-medium .sim-toast-progress { height: 4px !important; margin-top: 10px !important; }
-
-                #sim-toast-exp.size-large { width: 360px; padding: 18px; }
-                #sim-toast-exp.size-large .sim-img { width: 45px; height: 65px; }
-                #sim-toast-exp.size-large .sim-title { font-size: 16px; }
-                #sim-toast-exp.size-large .sim-sub { font-size: 13px; }
-                #sim-toast-exp.size-large .sim-monitor-label { font-size: 12px; }
-                #sim-toast-exp.size-large .sim-toast-progress { height: 6px !important; margin-top: 14px !important; }
-
-                /* Simulador Micro */
-                #sim-toast-micro.size-small { width: 80px; height: 3px; }
-                #sim-toast-micro.size-medium { width: 120px; height: 4px; }
-                #sim-toast-micro.size-large { width: 180px; height: 6px; }
-
-                /* Simulador Flash */
-                #sim-toast-flash.size-small { padding: 6px 12px; border-radius: 12px; }
-                #sim-toast-flash.size-small .sim-flash-txt { font-size: 11px; }
-                #sim-toast-flash.size-medium { padding: 8px 15px; border-radius: 20px; }
-                #sim-toast-flash.size-medium .sim-flash-txt { font-size: 13px; }
-                #sim-toast-flash.size-large { padding: 12px 20px; border-radius: 24px; }
-                #sim-toast-flash.size-large .sim-flash-txt { font-size: 16px; }
-
-                /* Simulador Overlay */
-                #sim-overlay.size-small { width: 250px; padding: 12px; }
-                #sim-overlay.size-small .sim-ov-title { font-size: 12px; margin-bottom: 6px; }
-                #sim-overlay.size-small .sim-ov-img { width: 35px; height: 50px; }
-                #sim-overlay.size-small .sim-ov-name { font-size: 12px; margin-bottom: 2px; }
-                #sim-overlay.size-small .sim-ov-sub { font-size: 10px; }
-                #sim-overlay.size-small .sim-ov-btn { padding: 8px; font-size: 11px; }
-
-                #sim-overlay.size-medium { width: 320px; padding: 16px; }
-                #sim-overlay.size-medium .sim-ov-title { font-size: 14px; margin-bottom: 12px; }
-                #sim-overlay.size-medium .sim-ov-img { width: 45px; height: 65px; }
-                #sim-overlay.size-medium .sim-ov-name { font-size: 14px; margin-bottom: 6px; }
-                #sim-overlay.size-medium .sim-ov-sub { font-size: 11px; }
-                #sim-overlay.size-medium .sim-ov-btn { padding: 10px; font-size: 13px; }
-
-                #sim-overlay.size-large { width: 400px; padding: 22px; }
-                #sim-overlay.size-large .sim-ov-title { font-size: 16px; margin-bottom: 14px; }
-                #sim-overlay.size-large .sim-ov-img { width: 55px; height: 80px; }
-                #sim-overlay.size-large .sim-ov-name { font-size: 18px; margin-bottom: 8px; }
-                #sim-overlay.size-large .sim-ov-sub { font-size: 13px; }
-                #sim-overlay.size-large .sim-ov-btn { padding: 14px; font-size: 15px; }
-            </style>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button id="btnBatchUpdate" style="background: #00b894; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">Atualizar Notas Oficiais</button>
+                    <button id="btnRestoreBackup" style="background: #ff7675; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; display: none;">Restaurar Backup Anterior</button>
+                </div>
+                <div id="batchProgress" style="font-size: 11px; color: #fdcb6e; margin-top: 8px; font-weight: bold; min-height: 15px;"></div>
+            </div>
+        </div>
     </div>
 
+    <!-- CONTROLES VISUAIS DO PLAYER -->
+    <h2>Interface do Player</h2>
+    <div style="margin-bottom: 25px;">
+        
+        <label class="setting-card" style="cursor: pointer; border-color: #fdcb6e;">
+            <div class="setting-info">
+                <span class="setting-title" style="color: #fdcb6e;">Permitir em Tela Cheia <i class="info-icon" data-tooltip="Se desativado, os widgets verdes e roxos só aparecerão se o vídeo estiver minimizado.">i</i></span>
+            </div>
+            <div class="toggle"><input type="checkbox" id="allowInFullscreen"><span class="slider"></span></div>
+        </label>
+
+        <label class="setting-card" style="cursor: pointer;">
+            <div class="setting-info">
+                <span class="setting-title" style="color: #00b894;">Toast Expandido (Verde)</span>
+                <span class="setting-desc" style="font-size: 11px; color: #aaa; opacity: 0.7;"> - O aviso principal que mostra o progresso do episódio.</span>
+            </div>
+            <div class="toggle"><input type="checkbox" id="enableToastExp"><span class="slider"></span></div>
+        </label>
+
+        <label class="setting-card" style="cursor: pointer;">
+            <div class="setting-info">
+                <span class="setting-title" style="color: #aaa;">Barra Colapsada (Meio)</span>
+                <span class="setting-desc" style="font-size: 11px; color: #aaa; opacity: 0.7;"> - A linha de progresso discreta no rodapé.</span>
+            </div>
+            <div class="toggle"><input type="checkbox" id="enableToastMicro"><span class="slider"></span></div>
+        </label>
+        
+        <label class="setting-card" style="cursor: pointer;">
+            <div class="setting-info">
+                <span class="setting-title" style="color: #00b894;">Aviso de Concluído (Flash)</span>
+                <span class="setting-desc" style="font-size: 11px; color: #aaa; opacity: 0.7;"> - A pílula que pisca "Episódio Marcado!".</span>
+            </div>
+            <div class="toggle"><input type="checkbox" id="enableToastFlash"><span class="slider"></span></div>
+        </label>
+
+        <label class="setting-card" style="cursor: pointer;">
+            <div class="setting-info">
+                <span class="setting-title" style="color: #a29bfe;">Painel de Avaliação (Roxo)</span>
+                <span class="setting-desc" style="font-size: 11px; color: #aaa; opacity: 0.7;"> - A janela de Fim de Temporada para avaliar.</span>
+            </div>
+            <div class="toggle"><input type="checkbox" id="enableOverlay"><span class="slider"></span></div>
+        </label>
+    </div>
+
+    <!-- CONFIGURAÇÃO DE TAMANHOS COM SIMULADOR -->
+    <h2>Ajuste de Tamanhos</h2>
+    <p style="font-size:11px; color:#aaa; margin-bottom:12px; margin-top:-5px;">
+        Dica: Você pode <b>arrastar</b> os elementos no simulador e clicar neles (ou usar o botão direito) para editar!
+    </p>
     
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+        <div style="flex: 1; min-width: 140px;">
+            <label style="font-size: 11px; color: #aaa;">Toast Expandido</label>
+            <select id="sizeToastExp" class="modern-select" style="width: 100%; margin-top: 2px;">
+                <option value="small">Pequeno</option>
+                <option value="medium">Médio (Padrão)</option>
+                <option value="large">Grande</option>
+            </select>
+        </div>
+        <div style="flex: 1; min-width: 140px;">
+            <label style="font-size: 11px; color: #aaa;">Barra Colapsada</label>
+            <select id="sizeToastMicro" class="modern-select" style="width: 100%; margin-top: 2px;">
+                <option value="small">Pequeno</option>
+                <option value="medium">Médio (Padrão)</option>
+                <option value="large">Grande</option>
+            </select>
+        </div>
+        <div style="flex: 1; min-width: 140px;">
+            <label style="font-size: 11px; color: #aaa;">Aviso (Flash)</label>
+            <select id="sizeToastFlash" class="modern-select" style="width: 100%; margin-top: 2px;">
+                <option value="small">Pequeno</option>
+                <option value="medium">Médio (Padrão)</option>
+                <option value="large">Grande</option>
+            </select>
+        </div>
+        <div style="flex: 1; min-width: 140px;">
+            <label style="font-size: 11px; color: #aaa;">Painel Avaliação</label>
+            <select id="sizeOverlay" class="modern-select" style="width: 100%; margin-top: 2px;">
+                <option value="small">Pequeno</option>
+                <option value="medium">Médio (Padrão)</option>
+                <option value="large">Grande</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- TELA DE SIMULAÇÃO AO VIVO -->
+    <div id="simulator-container" style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; border: 2px solid #333; overflow: hidden; font-family: 'Segoe UI', sans-serif;">
+        <div style="position: absolute; top: 10px; left: 10px; color: #555; font-size: 11px; font-weight: bold; text-transform: uppercase; z-index: 10;">Simulador Interativo</div>
+        <button id="btnSimFullscreen" title="Ver em Tela Cheia" style="position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.1); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; z-index: 10; font-size: 11px; font-weight: bold; backdrop-filter: blur(4px); transition: 0.2s;">🔲 Tela Cheia</button>
+
+        <div id="virtual-screen" style="position: absolute; top: 0; left: 0; width: 1280px; height: 720px; transform-origin: top left;">
+            
+            <div id="sim-toast-exp" class="sim-element sim-toast size-medium" style="position: absolute; bottom: 25px; left: 25px; background: rgba(20,20,25,0.95); border-left: 4px solid #00b894; border-radius: 8px; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.6);">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div class="sim-img" style="background: #444; border-radius: 4px;"></div>
+                    <div style="flex-grow: 1;">
+                        <div class="sim-monitor-label" style="font-size: 10px; color: #00b894; font-weight: bold;">MONITORANDO ANIME</div>
+                        <div class="sim-title" style="font-weight: bold;">Kaguya-sama: Love Is War</div>
+                        <div class="sim-sub" style="color: #aaa;">Episódio 4 / 12</div>
+                    </div>
+                </div>
+                <div class="sim-toast-progress" style="height: 4px; background: #333; margin-top: 10px; border-radius: 2px; overflow: hidden;">
+                    <div style="width: 80%; height: 100%; background: #00b894;"></div>
+                </div>
+            </div>
+
+            <div id="sim-toast-micro" class="sim-element sim-micro size-medium" style="position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); border-radius: 4px;">
+                <div style="height: 100%; width: 60%; background: #00b894; border-radius: 4px;"></div>
+            </div>
+
+            <div id="sim-toast-flash" class="sim-element sim-flash size-medium" style="position: absolute; bottom: 125px; left: 25px; background: rgba(0, 184, 148, 0.9); color: white;">
+                <span class="sim-flash-txt" style="font-weight: bold;">✔️ Episódio Marcado!</span>
+            </div>
+
+            <div id="sim-overlay" class="sim-element sim-overlay size-medium" style="position: absolute; bottom: 25px; right: 25px; background: linear-gradient(145deg, rgba(20,20,25,0.95), rgba(30,30,40,0.95)); border: 1px solid rgba(108,92,231,0.3); border-top: 4px solid #6c5ce7; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
+                <div class="sim-ov-title" style="color: #a29bfe; font-weight: bold; margin-bottom: 10px;">FIM DE TEMPORADA!</div>
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                    <div class="sim-ov-img" style="background: #444; border-radius: 6px;"></div>
+                    <div>
+                        <div class="sim-ov-name" style="font-weight: bold;">Re:ZERO</div>
+                        <div class="sim-ov-sub" style="color: #aaa;">Deseja avaliar?</div>
+                    </div>
+                </div>
+                <div class="sim-ov-btn" style="background: #6c5ce7; text-align: center; border-radius: 6px; font-weight: bold;">AVALIAR OBRA</div>
+            </div>
+
+            <!-- PAINEL FLUTUANTE DE EDIÇÃO DO SIMULADOR -->
+            <div id="sim-edit-panel" style="display:none; position:absolute; top:40px; right:40px; background:rgba(20,20,25,0.98); border:1px solid #00b894; border-radius:8px; padding:12px; color:white; box-shadow:0 8px 30px rgba(0,0,0,0.9); z-index: 1000; width: 200px; cursor:default;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom: 1px solid #444; padding-bottom: 6px;">
+                    <b id="sim-edit-title" style="color:#00b894; font-size: 13px;">Editar Elemento</b>
+                    <button id="sim-edit-close" style="background:none; border:none; color:#ff7675; cursor:pointer; font-weight:bold; font-size: 12px;">X</button>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-size:12px; font-weight: bold;">
+                        Ativar exibição
+                        <input type="checkbox" id="sim-edit-toggle" style="transform: scale(1.1); margin-left: 10px;">
+                    </label>
+                </div>
+                <div style="margin-bottom: 4px; font-size:11px; color: #aaa;">Tamanho:</div>
+                <select id="sim-edit-size" class="modern-select" style="width:100%;">
+                    <option value="small">Pequeno</option>
+                    <option value="medium">Médio (Padrão)</option>
+                    <option value="large">Grande</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        #sim-toast-exp.size-small { width: 220px; padding: 10px; }
+        #sim-toast-exp.size-small .sim-img { width: 28px; height: 40px; }
+        #sim-toast-exp.size-small .sim-title { font-size: 11px; }
+        #sim-toast-exp.size-small .sim-sub { font-size: 9px; }
+        #sim-toast-exp.size-small .sim-monitor-label { font-size: 8px; }
+        #sim-toast-exp.size-small .sim-toast-progress { height: 2px !important; margin-top: 6px !important; }
+
+        #sim-toast-exp.size-medium { width: 270px; padding: 12px; }
+        #sim-toast-exp.size-medium .sim-img { width: 35px; height: 50px; }
+        #sim-toast-exp.size-medium .sim-title { font-size: 13px; }
+        #sim-toast-exp.size-medium .sim-sub { font-size: 11px; }
+        #sim-toast-exp.size-medium .sim-monitor-label { font-size: 10px; }
+        #sim-toast-exp.size-medium .sim-toast-progress { height: 4px !important; margin-top: 10px !important; }
+
+        #sim-toast-exp.size-large { width: 340px; padding: 16px; }
+        #sim-toast-exp.size-large .sim-img { width: 45px; height: 65px; }
+        #sim-toast-exp.size-large .sim-title { font-size: 16px; }
+        #sim-toast-exp.size-large .sim-sub { font-size: 13px; }
+        #sim-toast-exp.size-large .sim-monitor-label { font-size: 12px; }
+        #sim-toast-exp.size-large .sim-toast-progress { height: 6px !important; margin-top: 14px !important; }
+
+        #sim-toast-micro.size-small { width: 80px; height: 3px; }
+        #sim-toast-micro.size-medium { width: 120px; height: 4px; }
+        #sim-toast-micro.size-large { width: 180px; height: 6px; }
+
+        #sim-toast-flash.size-small { padding: 6px 10px; border-radius: 12px; }
+        #sim-toast-flash.size-small .sim-flash-txt { font-size: 10px; }
+        #sim-toast-flash.size-medium { padding: 8px 14px; border-radius: 20px; }
+        #sim-toast-flash.size-medium .sim-flash-txt { font-size: 12px; }
+        #sim-toast-flash.size-large { padding: 12px 18px; border-radius: 24px; }
+        #sim-toast-flash.size-large .sim-flash-txt { font-size: 15px; }
+
+        #sim-overlay.size-small { width: 230px; padding: 12px; }
+        #sim-overlay.size-small .sim-ov-title { font-size: 11px; margin-bottom: 6px; }
+        #sim-overlay.size-small .sim-ov-img { width: 35px; height: 50px; }
+        #sim-overlay.size-small .sim-ov-name { font-size: 12px; margin-bottom: 2px; }
+        #sim-overlay.size-small .sim-ov-sub { font-size: 10px; }
+        #sim-overlay.size-small .sim-ov-btn { padding: 8px; font-size: 10px; }
+
+        #sim-overlay.size-medium { width: 280px; padding: 14px; }
+        #sim-overlay.size-medium .sim-ov-title { font-size: 13px; margin-bottom: 10px; }
+        #sim-overlay.size-medium .sim-ov-img { width: 45px; height: 65px; }
+        #sim-overlay.size-medium .sim-ov-name { font-size: 14px; margin-bottom: 6px; }
+        #sim-overlay.size-medium .sim-ov-sub { font-size: 11px; }
+        #sim-overlay.size-medium .sim-ov-btn { padding: 10px; font-size: 12px; }
+
+        #sim-overlay.size-large { width: 360px; padding: 18px; }
+        #sim-overlay.size-large .sim-ov-title { font-size: 15px; margin-bottom: 14px; }
+        #sim-overlay.size-large .sim-ov-img { width: 55px; height: 80px; }
+        #sim-overlay.size-large .sim-ov-name { font-size: 17px; margin-bottom: 8px; }
+        #sim-overlay.size-large .sim-ov-sub { font-size: 13px; }
+        #sim-overlay.size-large .sim-ov-btn { padding: 12px; font-size: 14px; }
+    </style>
 
     <h2>Critérios de Avaliação</h2>
     <div class="section">
         <div id="listaCriterios"></div>
-        <div class="row" style="margin-top:15px; gap: 10px;">
-            <input type="text" id="novoCriterio" placeholder="Ex: Trilha Sonora" style="flex-grow:1; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #1a1a1d; color: white;">
-            <button id="btnAddCriterio" style="background:#00b894; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">+ Adicionar</button>
+        <div class="input-row">
+            <input type="text" id="novoCriterio" class="modern-input" placeholder="Ex: Trilha Sonora">
+            <button id="btnAddCriterio" class="add-btn">+ Adicionar</button>
         </div>
     </div>
 
     <h2>Configurações Avançadas</h2>
     
-    <!-- SITES CUSTOMIZADOS -->
     <div class="section">
-        <h3 style="margin-top: 0;">🌐 Sites Monitorados Adicionais</h3>
-        <p style="font-size:11px; color:#ff7675; margin-bottom:15px; line-height: 1.4;">
-            ⚠️ <b>Aviso:</b> O registro de episódios só funcionará se o site usar um player de vídeo HTML5 padrão. Sites piratas com players muito complexos ou iframes de terceiros podem não ser detectados.
-        </p>
-        <div id="listaUrls" style="margin-bottom: 10px;"></div>
-        <div class="row" style="margin-top:15px; gap: 10px;">
-            <input type="text" id="novaUrl" placeholder="Ex: animeflix.com" style="flex-grow:1; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #1a1a1d; color: white;">
-            <button id="btnAddUrl" style="background:#00b894; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight: bold;">+ Adicionar Site</button>
+        <h3>🌐 Sites Monitorados Adicionais</h3>
+        <span class="warning-text">⚠️ <b>Aviso:</b> O registro de episódios só funcionará se o site usar um player de vídeo HTML5 padrão.</span>
+        <div id="listaUrls"></div>
+        <div class="input-row">
+            <input type="text" id="novaUrl" class="modern-input" placeholder="Ex: animeflix.com">
+            <button id="btnAddUrl" class="add-btn">+ Site</button>
         </div>
     </div>
 
-    <!-- DICIONÁRIO MANUAL -->
     <div class="section">
-        <h3 style="margin-top: 0;">📖 Dicionário de Traduções Manual</h3>
-        <p style="font-size:11px; color:#aaa; margin-bottom:15px; line-height: 1.4;">
-            Adicione correções para animes que a busca automática não encontra devido à traduções brasileiras muito distantes do original. (Ex: "Olhos de Gato" -> "A Whisker Away").
-        </p>
-        <div id="listaDicionario" style="margin-bottom: 10px;"></div>
-        <div class="row" style="margin-top:15px; gap: 10px;">
-            <input type="text" id="dicPt" placeholder="Nome em Português" style="flex-grow:1; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #1a1a1d; color: white;">
-            <input type="text" id="dicEn" placeholder="Nome Original/Inglês" style="flex-grow:1; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #1a1a1d; color: white;">
-            <button id="btnAddDic" style="background:#00b894; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight: bold;">+ Adicionar Correção</button>
+        <h3>📖 Dicionário de Traduções Manual</h3>
+        <span class="warning-text" style="color: #aaa;">Adicione correções para animes que a busca automática não encontra por causa do nome brasileiro.</span>
+        <div id="listaDicionario"></div>
+        <div class="input-row">
+            <input type="text" id="dicPt" class="modern-input" placeholder="Nome BR">
+            <input type="text" id="dicEn" class="modern-input" placeholder="Nome Original/EN">
+            <button id="btnAddDic" class="add-btn">+ Correção</button>
         </div>
     </div>
 
-    <!-- BARRA FLUTUANTE (Aparece em alterações não salvas) -->
+    <!-- SEÇÃO ADICIONADA: AÇÕES EM LOTE (BACKUP E ATUALIZAÇÃO) -->
+    <div class="section" id="batchUpdateArea" style="display: none; border-color: #6c5ce7; background: rgba(108, 92, 231, 0.05);">
+        <h3 style="color: #a29bfe;">⚡ Atualização de Notas em Lote</h3>
+        <p style="font-size: 12px; color: #ccc; margin-top: 5px; margin-bottom: 15px;">Sincronize as notas técnicas presentes nos seus comentários para a nota oficial do MAL em toda a sua lista.</p>
+        
+        <div class="button-group" style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="btnBatchUpdate" style="background: #00b894; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Atualizar Notas Oficiais</button>
+            <button id="btnRestoreBackup" style="background: #ff7675; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; display: none;">Restaurar Backup Anterior</button>
+        </div>
+        <p id="batchProgress" style="font-size: 12px; color: #fdcb6e; margin-top: 12px; margin-bottom: 0; font-weight: bold;"></p>
+    </div>
+
     <div id="discordSaveBar">
-        <span id="discordBarText">Cuidados — Você tem alterações não salvas nos critérios!</span>
+        <span id="discordBarText">Cuidado — Há alteração(ões) não salva(s)!</span>
         <div class="button-group">
             <button id="btnDescartarCriterios">Descartar</button>
-            <button id="btnSalvarCriterios">Salvar alterações</button>
+            <button id="btnSalvarCriterios">Salvar</button>
         </div>
     </div>
 

@@ -67,36 +67,96 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 target: { tabId: sender.tab.id },
                 world: 'MAIN', 
                 func: () => {
-                    if (window.malProbeInjected) return;
-                    window.malProbeInjected = true;
+                    if (window.malProbeInterval) clearInterval(window.malProbeInterval);
                     
-                    setInterval(() => {
+                    window.malProbeInterval = setInterval(() => {
                         try {
-                            let vId = document.querySelector('[data-videoid]')?.getAttribute('data-videoid');
-                            if (!vId) return;
-                            
+                            let match = window.location.pathname.match(/\/watch\/(\d+)/);
+                            if (!match) return;
+                            let vId = match[1];
+
                             let cache = window.netflix?.falcorCache?.videos;
-                            if (cache && cache[vId]) {
-                                // MÁGICA: Transforma o objeto do vídeo inteiro em texto e acha os números na força bruta!
-                                let videoStr = JSON.stringify(cache[vId]);
-                                let sMatch = videoStr.match(/"season"\s*:\s*(\d+)/);
-                                let eMatch = videoStr.match(/"episode"\s*:\s*(\d+)/);
-                                
-                                let sNum = sMatch ? parseInt(sMatch[1]) : null;
-                                let eNum = eMatch ? parseInt(eMatch[1]) : null;
-                                
-                                let div = document.getElementById('mal-reviewer-netflix-data');
-                                if (!div) {
-                                    div = document.createElement('div');
-                                    div.id = 'mal-reviewer-netflix-data';
-                                    div.style.display = 'none';
-                                    document.body.appendChild(div);
+                            
+                            // Cria um payload base, mesmo que o cache falhe
+                            let payload = {
+                                uniqueId: vId,
+                                cacheEncontrado: false,
+                                type: null, 
+                                season: null,
+                                episode: null,
+                                showTitle: null,
+                                movieTitle: null
+                            };
+
+                            // Tenta ler o cache se ele existir
+                            if (cache && cache[vId] && cache[vId].summary && cache[vId].summary.value) {
+                                payload.cacheEncontrado = true;
+                                let summary = cache[vId].summary.value;
+                                payload.type = summary.type;
+                                payload.season = summary.season || null;
+                                payload.episode = summary.episode || summary.idx || null;
+
+                                if (summary.type === 'movie' && cache[vId].title) {
+                                    payload.movieTitle = cache[vId].title.value;
+                                } else {
+                                    // Tenta caçar o nome da série varrendo o cache
+                                    for (let key in cache) {
+                                        let item = cache[key];
+                                        if (item?.summary?.value?.type === 'show' && item.title) {
+                                            payload.showTitle = item.title.value;
+                                        }
+                                    }
                                 }
+                            }
+
+                            let div = document.getElementById('mal-reviewer-netflix-data');
+                            if (!div) {
+                                div = document.createElement('div');
+                                div.id = 'mal-reviewer-netflix-data';
+                                div.style.display = 'none';
+                                document.body.appendChild(div);
+                            }
+                            
+                            let newData = JSON.stringify(payload);
+                            
+                            // Atualiza a tela APENAS se o ID do vídeo mudar ou se a Netflix finalmente atualizar o cache daquele vídeo
+                            if (div.getAttribute('data-video') !== vId || div.innerText !== newData) {
                                 div.setAttribute('data-video', vId);
-                                div.innerText = JSON.stringify({ season: sNum, episode: eNum });
+                                div.innerText = newData;
+
+                                console.log("%c🔍 [SONDA NETFLIX - CACHE] Identificado novo vídeo!", "background: #e50914; color: #fff; font-weight: bold; padding: 4px; border-radius: 4px;", payload);
+                                
+                                let debugBox = document.getElementById('mal-debug-box');
+                                if (!debugBox) {
+                                    debugBox = document.createElement('div');
+                                    debugBox.id = 'mal-debug-box';
+                                    debugBox.style.cssText = 'position: fixed; top: 15px; left: 15px; background: rgba(0,0,0,0.85); color: #00ffcc; padding: 12px; z-index: 2147483647; border: 1px solid #00ffcc; border-radius: 8px; font-family: monospace; font-size: 13px; pointer-events: none; text-shadow: 1px 1px 0 #000; box-shadow: 0 4px 10px rgba(0,0,0,0.5);';
+                                    document.body.appendChild(debugBox);
+                                }
+                                
+                                let statusCache = payload.cacheEncontrado 
+                                    ? '<b style="color: #00b894;">SIM (Lido com sucesso)</b>' 
+                                    : '<b style="color: #ff7675;">NÃO (Netflix não atualizou)</b>';
+
+                                debugBox.innerHTML = `
+                                    <strong style="color:#ff7675; font-size: 14px;">🔍 Sonda de Memória (Netflix)</strong><br>
+                                    <div style="margin-top: 6px; color: #fff; line-height: 1.5;">
+                                        ID do Vídeo: <b style="color: #fdcb6e;">${payload.uniqueId}</b><br>
+                                        Cache do Vídeo Existe?: ${statusCache}<br>
+                                        Tipo: <b style="color: #fdcb6e;">${payload.type}</b><br>
+                                        Série: <b style="color: #fdcb6e;">${payload.showTitle || 'N/A'}</b><br>
+                                        Temporada: <b style="color: #fdcb6e;">${payload.season || 'N/A'}</b><br>
+                                        Episódio: <b style="color: #fdcb6e;">${payload.episode || 'N/A'}</b>
+                                    </div>
+                                `;
+
+                                clearTimeout(window.malDebugTimeout);
+                                window.malDebugTimeout = setTimeout(() => {
+                                    if(debugBox) debugBox.remove();
+                                }, 12000);
                             }
                         } catch(e) {}
-                    }, 500);
+                    }, 150);
                 }
             }).catch(console.error);
         }
@@ -466,6 +526,7 @@ async function executarBuscaJikan(termo, isAuto, sendResponse) {
                     duration 
                     seasonYear
                     coverImage { medium large }
+                    studios(isMain: true) { nodes { name } }
                 }
             }
         }`;
@@ -496,6 +557,8 @@ async function executarBuscaJikan(termo, isAuto, sendResponse) {
 
             let temporadasMapeadas = resultados.map(item => {
                 let listStatus = completadosLocais.includes(item.idMal) ? { status: 'completed' } : null;
+                // MÁGICA DO ESTÚDIO AQUI:
+                let mainStudio = (item.studios && item.studios.nodes && item.studios.nodes.length > 0) ? item.studios.nodes[0].name : "";
 
                 return {
                     mal_id: item.idMal,
@@ -506,6 +569,7 @@ async function executarBuscaJikan(termo, isAuto, sendResponse) {
                     media_type: item.format ? item.format.toLowerCase() : "tv",
                     alternative_titles: item.synonyms || [],
                     my_list_status: listStatus,
+                    studio: mainStudio,
                     images: {
                         jpg: {
                             image_url: item.coverImage.large || item.coverImage.medium,
