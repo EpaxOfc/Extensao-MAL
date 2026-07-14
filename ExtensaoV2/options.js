@@ -1,4 +1,6 @@
-const criteriosPadrao = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design", "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia"];
+const criteriosPadrao = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design", 
+    "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia", "Trilha Sonora", 
+    "Efeitos Sonoros"];
 
 let criteriosOriginais = [];
 let criteriosTemporarios = [];
@@ -6,22 +8,33 @@ let sitesCustomizados = [];
 let dicionarioCustom = {};
 let currentEditingSimId = null;
 
+function obterTokenDoBackground() {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action: 'obterTokenValido' }, (response) => {
+            if (chrome.runtime.lastError || !response || !response.success) {
+                resolve(null);
+            } else {
+                resolve(response.token);
+            }
+        });
+    });
+}
+
 // Mapeamento dos painéis do Simulador com os Inputs Reais
 const elConfigMap = {
-    'sim-toast-exp': { title: 'Toast Expandido', toggleId: 'enableToastExp', sizeId: 'sizeToastExp' },
-    'sim-toast-micro': { title: 'Barra Colapsada', toggleId: 'enableToastMicro', sizeId: 'sizeToastMicro' },
-    'sim-toast-flash': { title: 'Aviso de Concluído', toggleId: 'enableToastFlash', sizeId: 'sizeToastFlash' },
-    'sim-overlay': { title: 'Painel de Avaliação', toggleId: 'enableOverlay', sizeId: 'sizeOverlay' }
+    'sim-toast-exp': { title: 'Toast Expandido', toggleId: 'enableToastExp', sizeId: 'sizeToastExp', discreetId: null, discreetClass: null },
+    'sim-toast-micro': { title: 'Barra Colapsada', toggleId: 'enableToastMicro', sizeId: 'sizeToastMicro', discreetId: 'discreetProgressFs', discreetClass: 'fs-discreet-prog' },
+    'sim-toast-flash': { title: 'Aviso de Concluído', toggleId: 'enableToastFlash', sizeId: 'sizeToastFlash', discreetId: 'discreetFlashFs', discreetClass: 'fs-discreet-flash-enabled' },
+    'sim-overlay': { title: 'Painel de Avaliação', toggleId: 'enableOverlay', sizeId: 'sizeOverlay', discreetId: 'discreetOverlayFs', discreetClass: 'fs-discreet' }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
     carregarConfig();
     carregarCriterios();
     
-    // Verifica conexão do MAL
-    chrome.storage.local.get(['mal_access_token'], (res) => {
-        if (res.mal_access_token) {
-            buscarPerfilMAL(res.mal_access_token);
+    obterTokenDoBackground().then(token => {
+        if (token) {
+            buscarPerfilMAL(token);
         } else {
             atualizarInterfaceLogin(false);
         }
@@ -65,15 +78,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Monitora as caixinhas em tempo real
     ['officialScore', 'syncMal', 'autoUpdateProgress'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', verificarExibicaoBotoesBatch);
     });
 
     // SALVAMENTO AUTOMÁTICO DAS PREFERÊNCIAS E ELEMENTOS VISUAIS
-    const liveKeys = ['autoOpen', 'syncMal', 'officialScore', 'autoUpdateProgress', 'autoUpdateTrigger', 'autoCompleteOnLast', 'blockRegressionOnComplete', 'autoOpenOverlayIfNoScore', 'allowInFullscreen', 'enableToastExp', 'enableToastMicro', 'enableToastFlash', 'enableOverlay', 'sizeToastExp', 'sizeToastMicro', 'sizeToastFlash', 'sizeOverlay'];
-    
+    const liveKeys = ['autoOpen', 'syncMal', 'officialScore', 'autoUpdateProgress', 'autoUpdateTrigger', 
+        'autoCompleteOnLast', 'blockRegressionOnComplete', 'autoOpenOverlayIfNoScore', 'allowInFullscreen', 
+        'discreetOverlayFs', 'discreetProgressFs', 'discreetFlashFs', 'enableToastExp', 'enableToastMicro', 
+        'enableToastFlash', 'enableOverlay', 'sizeToastExp', 'sizeToastMicro', 'sizeToastFlash', 'sizeOverlay', 
+        'enablePrimeBasic', 'enablePrimeAdvanced', 'forceSidePanel', 'autoCloseCorrection', 'netflixCrSubs'];    
     liveKeys.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -82,28 +97,64 @@ document.addEventListener('DOMContentLoaded', () => {
             config[id] = el.tagName === 'SELECT' ? e.target.value : e.target.checked;
             chrome.storage.local.set(config, () => verificarExibicaoBotoesBatch());
             
-            // Sincroniza estado de ativação
-            if (id.startsWith('enable')) syncElementState(id, e.target.checked);
+            if (id.startsWith('enable') && !id.includes('Prime')) syncElementState(id, e.target.checked);
             
-            // Atualiza tamanho no simulador se for select
-            if (id.startsWith('size')) {
-                let mapSizeId = {
-                    'sizeToastExp': 'sim-toast-exp',
-                    'sizeToastMicro': 'sim-toast-micro',
-                    'sizeToastFlash': 'sim-toast-flash',
-                    'sizeOverlay': 'sim-overlay'
-                };
-                let simEl = document.getElementById(mapSizeId[id]);
-                if (simEl) {
-                    // Mantém as classes padrão e adiciona o size
-                    simEl.className = `sim-element ${mapSizeId[id] === 'sim-toast-exp' ? 'sim-toast' : mapSizeId[id].replace('sim-', 'sim-')} size-${e.target.value} ${document.getElementById(id.replace('size', 'enable')).checked ? '' : 'sim-disabled'}`;
-                }
+            if (id === 'discreetOverlayFs') document.getElementById('sim-overlay')?.classList.toggle('fs-discreet', e.target.checked);
+            if (id === 'discreetProgressFs') document.getElementById('sim-toast-micro')?.classList.toggle('fs-discreet-prog', e.target.checked);
+            if (id === 'discreetFlashFs') document.getElementById('sim-toast-flash')?.classList.toggle('fs-discreet-flash-enabled', e.target.checked);
+            
+            if (id === 'netflixCrSubs') {
+                const subSizeContainer = document.getElementById('netflixSubSizeContainer');
+                if (subSizeContainer) subSizeContainer.style.display = e.target.checked ? 'block' : 'none';
             }
 
-            // Sincroniza o painel flutuante se estiver aberto
+            if (id.startsWith('size')) {
+                let mapSizeId = { 'sizeToastExp': 'sim-toast-exp', 'sizeToastMicro': 'sim-toast-micro', 'sizeToastFlash': 'sim-toast-flash', 'sizeOverlay': 'sim-overlay' };
+                let simEl = document.getElementById(mapSizeId[id]);
+                if (simEl) simEl.className = `sim-element ${mapSizeId[id] === 'sim-toast-exp' ? 'sim-toast' : mapSizeId[id].replace('sim-', 'sim-')} size-${e.target.value} ${document.getElementById(id.replace('size', 'enable')).checked ? '' : 'sim-disabled'} ${simEl.className.includes('fs-discreet') ? simEl.className.match(/fs-discreet[a-z-]*/)[0] : ''}`;
+            }
             syncPanelIfOpen(id, config[id]);
         });
     });
+
+    const netflixSubSizeInput = document.getElementById('netflixSubSize');
+    if (netflixSubSizeInput) {
+        netflixSubSizeInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            const lblSubSize = document.getElementById('lblNetflixSubSize');
+            if (lblSubSize) lblSubSize.innerText = `${val}px`;
+            
+            const simSubtitleEx = document.getElementById('sim-subtitle-example');
+            if (simSubtitleEx) simSubtitleEx.style.fontSize = `${val}px`;
+            
+            chrome.storage.local.set({ netflixSubSize: parseInt(val) });
+        });
+    }
+
+    // INTERRUPTORES DO SIMULADOR
+    const simTogglePopups = document.getElementById('simTogglePopups');
+    if (simTogglePopups) {
+        simTogglePopups.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            ['sim-toast-exp', 'sim-toast-micro', 'sim-toast-flash', 'sim-overlay'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.opacity = isChecked ? (el.classList.contains('sim-disabled') ? '0.3' : '1') : '0';
+                    el.style.pointerEvents = isChecked ? 'auto' : 'none';
+                }
+            });
+        });
+    }
+
+    const simToggleSubtitle = document.getElementById('simToggleSubtitle');
+    if (simToggleSubtitle) {
+        simToggleSubtitle.addEventListener('change', (e) => {
+            const simSubtitleEx = document.getElementById('sim-subtitle-example');
+            if (simSubtitleEx) {
+                simSubtitleEx.style.opacity = e.target.checked ? '1' : '0';
+            }
+        });
+    }
 
     // Critérios Temporários
     const btnAddCriterio = document.getElementById('btnAddCriterio');
@@ -128,6 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnBatchUpdate) btnBatchUpdate.addEventListener('click', executarAtualizacaoEmMassa);
     const btnRestoreBackup = document.getElementById('btnRestoreBackup');
     if (btnRestoreBackup) btnRestoreBackup.addEventListener('click', restaurarNotasOriginais);
+    const btnLocalSync = document.getElementById('btnLocalSync');
+    if (btnLocalSync) btnLocalSync.addEventListener('click', executarSincronizacaoLocalParaMAL);
 
     const btnAddUrl = document.getElementById('btnAddUrl');
     if (btnAddUrl) {
@@ -159,7 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Configura o painel flutuante do Simulador
     configurarPainelSimulador();
 });
 
@@ -179,7 +231,16 @@ function syncElementState(toggleId, isEnabled) {
         'enableOverlay': 'sim-overlay'
     };
     let simEl = document.getElementById(simIdMap[toggleId]);
-    if (simEl) simEl.classList.toggle('sim-disabled', !isEnabled);
+    if (simEl) {
+        // Se os popups globais do simulador estiverem ativados, muda o estilo
+        const simTogglePopups = document.getElementById('simTogglePopups');
+        if (simTogglePopups && !simTogglePopups.checked) {
+            simEl.style.opacity = '0';
+        } else {
+            simEl.classList.toggle('sim-disabled', !isEnabled);
+            simEl.style.opacity = isEnabled ? '1' : '0.3';
+        }
+    }
 }
 
 function syncPanelIfOpen(changedId, newValue) {
@@ -190,9 +251,15 @@ function syncPanelIfOpen(changedId, newValue) {
     if (changedId === config.toggleId) {
         document.getElementById('sim-edit-toggle').checked = newValue;
         document.getElementById('sim-edit-size').disabled = !newValue;
+        let discToggle = document.getElementById('sim-edit-discreet');
+        if (discToggle) discToggle.disabled = !newValue;
     }
     if (changedId === config.sizeId) {
         document.getElementById('sim-edit-size').value = newValue;
+    }
+    if (changedId === config.discreetId) {
+        let discToggle = document.getElementById('sim-edit-discreet');
+        if (discToggle) discToggle.checked = newValue;
     }
 }
 
@@ -203,32 +270,34 @@ function configurarPainelSimulador() {
     let btnClose = document.getElementById('sim-edit-close');
     let toggleInput = document.getElementById('sim-edit-toggle');
     let sizeInput = document.getElementById('sim-edit-size');
+    let discreetInput = document.getElementById('sim-edit-discreet');
 
     btnClose.addEventListener('click', () => {
         simPanel.style.display = 'none';
         currentEditingSimId = null;
     });
 
-    // Quando o usuário muda no painelzinho, dispara o evento pros inputs originais
     toggleInput.addEventListener('change', (e) => {
         if (!currentEditingSimId) return;
         let realToggle = document.getElementById(elConfigMap[currentEditingSimId].toggleId);
-        if (realToggle) {
-            realToggle.checked = e.target.checked;
-            realToggle.dispatchEvent(new Event('change'));
-        }
+        if (realToggle) { realToggle.checked = e.target.checked; realToggle.dispatchEvent(new Event('change')); }
     });
 
     sizeInput.addEventListener('change', (e) => {
         if (!currentEditingSimId) return;
         let realSize = document.getElementById(elConfigMap[currentEditingSimId].sizeId);
-        if (realSize) {
-            realSize.value = e.target.value;
-            realSize.dispatchEvent(new Event('change'));
+        if (realSize) { realSize.value = e.target.value; realSize.dispatchEvent(new Event('change')); }
+    });
+
+    discreetInput.addEventListener('change', (e) => {
+        if (!currentEditingSimId) return;
+        let config = elConfigMap[currentEditingSimId];
+        if (config && config.discreetId) {
+            let realDiscreet = document.getElementById(config.discreetId);
+            if (realDiscreet) { realDiscreet.checked = e.target.checked; realDiscreet.dispatchEvent(new Event('change')); }
         }
     });
 
-    // Torna todos os 4 elementos arrastáveis e clicáveis
     ['sim-toast-exp', 'sim-toast-micro', 'sim-toast-flash', 'sim-overlay'].forEach(id => {
         let el = document.getElementById(id);
         if (el) makeDraggable(el);
@@ -238,34 +307,58 @@ function configurarPainelSimulador() {
 function abrirPainelSimulador(simId) {
     let config = elConfigMap[simId];
     currentEditingSimId = simId;
+    let el = document.getElementById(simId);
+    let panel = document.getElementById('sim-edit-panel');
     
     document.getElementById('sim-edit-title').innerText = config.title;
     
     let realToggle = document.getElementById(config.toggleId);
     let realSize = document.getElementById(config.sizeId);
     
-    let simToggle = document.getElementById('sim-edit-toggle');
-    let simSize = document.getElementById('sim-edit-size');
-    
-    simToggle.checked = realToggle.checked;
-    simSize.value = realSize.value;
-    simSize.disabled = !realToggle.checked;
+    document.getElementById('sim-edit-toggle').checked = realToggle.checked;
+    document.getElementById('sim-edit-size').value = realSize.value;
+    document.getElementById('sim-edit-size').disabled = !realToggle.checked;
 
-    document.getElementById('sim-edit-panel').style.display = 'block';
+    let discreetWrapper = document.getElementById('sim-discreet-wrapper');
+    let discreetInput = document.getElementById('sim-edit-discreet');
+    if (config.discreetId) {
+        discreetWrapper.style.display = 'block';
+        discreetInput.checked = document.getElementById(config.discreetId).checked;
+        discreetInput.disabled = !realToggle.checked;
+    } else {
+        discreetWrapper.style.display = 'none';
+    }
+
+    let elLeft = el.offsetLeft;
+    let elTop = el.offsetTop;
+    let panelWidth = 230; 
+    let panelHeight = 160;
+    
+    let newLeft = elLeft > 640 ? (elLeft - panelWidth - 20) : (elLeft + el.offsetWidth + 20);
+    let newTop = elTop;
+    
+    if (newLeft < 10) newLeft = 10;
+    if (newLeft + panelWidth > 1270) newLeft = 1270 - panelWidth;
+    if (newTop + panelHeight > 710) newTop = 710 - panelHeight;
+    
+    panel.style.left = newLeft + 'px';
+    panel.style.top = newTop + 'px';
+    panel.style.right = 'auto'; 
+    panel.style.bottom = 'auto';
+
+    panel.style.display = 'block';
 }
 
 function makeDraggable(el) {
     let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
     let isDragging = false;
 
-    // EVENTO NOVO: Botão Direito do Mouse
     el.oncontextmenu = function(e) {
-        e.preventDefault(); // Impede o menu do navegador de abrir
+        e.preventDefault(); 
         abrirPainelSimulador(el.id);
     };
 
     el.onmousedown = function(e) {
-        // Ignora o clique se for o botão direito (código 2), para não tentar arrastar
         if (e.button === 2) return;
 
         e.preventDefault();
@@ -275,7 +368,6 @@ function makeDraggable(el) {
         document.onmouseup = closeDragElement;
         document.onmousemove = elementDrag;
         
-        // Converte coordenadas Bottom/Right em Top/Left para o arraste ser perfeito
         if (el.style.bottom !== 'auto' || el.style.transform !== 'none') {
             let rect = el.getBoundingClientRect();
             let parentRect = el.parentElement.getBoundingClientRect();
@@ -310,14 +402,12 @@ function makeDraggable(el) {
     function closeDragElement() {
         document.onmouseup = null;
         document.onmousemove = null;
-        // Abre o painel se foi um clique esquerdo normal sem arrastar
         if (!isDragging) {
             abrirPainelSimulador(el.id);
         }
     }
 }
 
-// Impede que clicar no painel de edição arraste algo por trás
 document.getElementById('sim-edit-panel').onmousedown = function(e) {
     e.stopPropagation();
 };
@@ -345,9 +435,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     document.addEventListener('fullscreenchange', () => {
-        let btn = document.getElementById('btnSimFullscreen');
-        if (document.fullscreenElement) btn.textContent = "❌ Sair da Tela Cheia";
-        else btn.textContent = "🔲 Tela Cheia";
+        const btn = document.getElementById('btnSimFullscreen');
+        if (!btn) return;
+        
+        const iconEnter = btn.querySelector('.fs-icon-enter');
+        const iconExit = btn.querySelector('.fs-icon-exit');
+        const textSpan = btn.querySelector('.fs-text');
+        
+        if (document.fullscreenElement) {
+            if (iconEnter) iconEnter.style.display = 'none';
+            if (iconExit) iconExit.style.display = 'inline-block';
+            if (textSpan) textSpan.textContent = "Sair";
+        } else {
+            if (iconEnter) iconEnter.style.display = 'inline-block';
+            if (iconExit) iconExit.style.display = 'none';
+            if (textSpan) textSpan.textContent = "Tela Cheia";
+        }
         setTimeout(ajustarMonitorVirtual, 50); 
     });
 });
@@ -359,7 +462,8 @@ function carregarConfig() {
         'blockRegressionOnComplete', 'autoOpenOverlayIfNoScore', 
         'mal_access_token', 'customUrls', 'customDict',
         'allowInFullscreen', 'enableToastExp', 'enableToastMicro', 'enableToastFlash', 'enableOverlay',
-        'sizeToastExp', 'sizeToastMicro', 'sizeToastFlash', 'sizeOverlay'
+        'sizeToastExp', 'sizeToastMicro', 'sizeToastFlash', 'sizeOverlay',
+        'enablePrimeBasic', 'enablePrimeAdvanced', 'netflixCrSubs', 'netflixSubSize'
     ], (res) => {
         
         const viewModeEl = document.getElementById('viewMode');
@@ -398,14 +502,46 @@ function carregarConfig() {
         if (document.getElementById('blockRegressionOnComplete')) document.getElementById('blockRegressionOnComplete').checked = res.blockRegressionOnComplete ?? true;
         if (document.getElementById('autoOpenOverlayIfNoScore')) document.getElementById('autoOpenOverlayIfNoScore').checked = res.autoOpenOverlayIfNoScore ?? true;
 
+        // INICIALIZAÇÃO DOS BOTÕES DO PRIME VIDEO (Desativados por padrão)
+        const checkPrimeBasic = document.getElementById('enablePrimeBasic');
+        if (checkPrimeBasic) checkPrimeBasic.checked = res.enablePrimeBasic ?? false;
+        
+        const checkPrimeAdv = document.getElementById('enablePrimeAdvanced');
+        if (checkPrimeAdv) {
+            checkPrimeAdv.checked = res.enablePrimeAdvanced ?? false;
+            checkPrimeAdv.disabled = !(res.enablePrimeBasic ?? false);
+        }
+        
+        // Listener exclusivo para a interação entre os dois botões do Prime
+        if (checkPrimeBasic) {
+            checkPrimeBasic.addEventListener('change', (e) => {
+                if (checkPrimeAdv) {
+                    checkPrimeAdv.disabled = !e.target.checked;
+                    if (!e.target.checked) {
+                        checkPrimeAdv.checked = false;
+                        chrome.storage.local.set({ enablePrimeAdvanced: false });
+                    }
+                }
+            });
+        }
+
         // INICIALIZADOR DOS NOVOS CONTROLES
         const checks = {
+            'forceSidePanel': res.forceSidePanel ?? true,
+            'autoCloseCorrection': res.autoCloseCorrection ?? true,
             'allowInFullscreen': res.allowInFullscreen ?? true,
+            'discreetProgressFs': res.discreetProgressFs ?? false,
+            'discreetFlashFs': res.discreetFlashFs ?? false,
+            'discreetOverlayFs': res.discreetOverlayFs ?? false,
             'enableToastExp': res.enableToastExp ?? true,
             'enableToastMicro': res.enableToastMicro ?? true,
             'enableToastFlash': res.enableToastFlash ?? true,
-            'enableOverlay': res.enableOverlay ?? true
+            'enableOverlay': res.enableOverlay ?? true,
+            'netflixCrSubs': res.netflixCrSubs ?? true
         };
+        if (checks['discreetOverlayFs']) document.getElementById('sim-overlay')?.classList.add('fs-discreet');
+        if (checks['discreetProgressFs']) document.getElementById('sim-toast-micro')?.classList.add('fs-discreet-prog');
+        if (checks['discreetFlashFs']) document.getElementById('sim-toast-flash')?.classList.add('fs-discreet-flash-enabled');
 
         for (let key in checks) {
             let el = document.getElementById(key);
@@ -413,6 +549,29 @@ function carregarConfig() {
                 el.checked = checks[key];
                 if (key.startsWith('enable')) syncElementState(key, checks[key]);
             }
+        }
+
+        const checkFs = document.getElementById('allowInFullscreen');
+        const fsSubOptions = document.getElementById('fsSubOptions');
+        if (checkFs && fsSubOptions) {
+            fsSubOptions.style.display = checkFs.checked ? 'flex' : 'none';
+            checkFs.addEventListener('change', (e) => {
+                fsSubOptions.style.display = e.target.checked ? 'flex' : 'none';
+            });
+        }
+
+        const subSizeContainer = document.getElementById('netflixSubSizeContainer');
+        if (subSizeContainer) {
+            subSizeContainer.style.display = checks['netflixCrSubs'] ? 'block' : 'none';
+        }
+
+        const savedSubSize = res.netflixSubSize || 28;
+        const netflixSubSizeInput = document.getElementById('netflixSubSize');
+        if (netflixSubSizeInput) {
+            netflixSubSizeInput.value = savedSubSize;
+            document.getElementById('lblNetflixSubSize').innerText = `${savedSubSize}px`;
+            const simSubtitleEx = document.getElementById('sim-subtitle-example');
+            if (simSubtitleEx) simSubtitleEx.style.fontSize = `${savedSubSize}px`;
         }
 
         const sizes = {
@@ -457,7 +616,6 @@ function renderizarCriteriosTemporarios() {
     
     criteriosTemporarios.forEach((crit, index) => {
         let item = document.createElement('div');
-        // Usamos a classe setting-card para herdar o visual moderno
         item.className = "setting-card";
         item.style.marginBottom = "6px";
         item.style.padding = "8px 12px";
@@ -506,15 +664,45 @@ function renderizarDicionario() {
     if (!container) return;
     container.innerHTML = "";
     let chaves = Object.keys(dicionarioCustom);
-    if (chaves.length === 0) { container.innerHTML = "<div style='color: #aaa; font-size: 13px; font-style: italic;'>Nenhuma correção manual cadastrada.</div>"; return; }
+    if (chaves.length === 0) { 
+        container.innerHTML = "<div style='color: #aaa; font-size: 13px; font-style: italic;'>Nenhuma correção manual cadastrada.</div>"; 
+        return; 
+    }
+    
     chaves.forEach((chave) => {
         let valor = dicionarioCustom[chave];
         let item = document.createElement('div');
         item.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: #202024; padding: 8px 12px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #444;";
-        let span = document.createElement('span'); span.innerHTML = `<span style="color:#ff7675;">${chave}</span> ➔ <span style="color:#00b894;">${valor}</span>`; span.style.fontSize = "13px"; span.style.fontWeight = "bold";
-        let btn = document.createElement('button'); btn.textContent = "Remover"; btn.style.cssText = "background: #ff7675; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;";
-        btn.addEventListener('click', () => { delete dicionarioCustom[chave]; chrome.storage.local.set({ customDict: dicionarioCustom }, renderizarDicionario); });
-        item.appendChild(span); item.appendChild(btn); container.appendChild(item);
+        
+        let span = document.createElement('span'); 
+        span.style.fontSize = "13px";
+        span.style.fontWeight = "bold";
+        
+        let sChave = document.createElement('span');
+        sChave.style.color = "#ff7675";
+        sChave.textContent = chave;
+        
+        let arrow = document.createTextNode(" ➔ ");
+        
+        let sValor = document.createElement('span');
+        sValor.style.color = "#00b894";
+        sValor.textContent = valor;
+        
+        span.appendChild(sChave);
+        span.appendChild(arrow);
+        span.appendChild(sValor);
+        
+        let btn = document.createElement('button'); 
+        btn.textContent = "Remover"; 
+        btn.style.cssText = "background: #ff7675; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;";
+        btn.addEventListener('click', () => { 
+            delete dicionarioCustom[chave]; 
+            chrome.storage.local.set({ customDict: dicionarioCustom }, renderizarDicionario); 
+        });
+        
+        item.appendChild(span); 
+        item.appendChild(btn); 
+        container.appendChild(item);
     });
 }
 
@@ -577,10 +765,18 @@ function verificarExibicaoBotoesBatch() {
     const officialScoreEl = document.getElementById('officialScore'); const syncMalEl = document.getElementById('syncMal'); const autoUpdateProgressEl = document.getElementById('autoUpdateProgress');
     if (!officialScoreEl || !syncMalEl || !autoUpdateProgressEl) return;
     const isOfficialScoreChecked = officialScoreEl.checked; const isSyncMalChecked = syncMalEl.checked; const isAutoProgressChecked = autoUpdateProgressEl.checked;
+    
     chrome.storage.local.get(['mal_access_token', 'mal_backup_scores'], (res) => {
-        const batchArea = document.getElementById('batchUpdateArea'); const btnRestore = document.getElementById('btnRestoreBackup');
-        const progress = document.getElementById('batchProgress'); const malSyncContainer = document.getElementById('malSyncContainer');
+        const batchArea = document.getElementById('batchUpdateArea'); 
+        const btnRestore = document.getElementById('btnRestoreBackup');
+        const progress = document.getElementById('batchProgress'); 
+        
+        const localSyncArea = document.getElementById('localSyncArea');
+        const localSyncProgress = document.getElementById('localSyncProgress');
+
+        const malSyncContainer = document.getElementById('malSyncContainer');
         const progressSettingsContainer = document.getElementById('progressSettingsContainer');
+        
         if (malSyncContainer) {
             if (isSyncMalChecked) {
                 malSyncContainer.style.display = 'flex';
@@ -590,10 +786,17 @@ function verificarExibicaoBotoesBatch() {
                 if (progressSettingsContainer) progressSettingsContainer.style.display = 'none';
             }
         }
+        
         if (batchArea) {
             if (isOfficialScoreChecked && res.mal_access_token) batchArea.style.display = 'block';
             else { batchArea.style.display = 'none'; if (progress) progress.innerText = ""; }
         }
+
+        if (localSyncArea) {
+            if (isSyncMalChecked && res.mal_access_token) localSyncArea.style.display = 'block';
+            else { localSyncArea.style.display = 'none'; if (localSyncProgress) localSyncProgress.innerText = ""; }
+        }
+
         if (btnRestore) { btnRestore.style.display = (res.mal_backup_scores && Object.keys(res.mal_backup_scores.scores || {}).length > 0) ? 'inline-block' : 'none'; }
     });
 }
@@ -608,8 +811,11 @@ async function executarAtualizacaoEmMassa() {
     const progress = document.getElementById('batchProgress');
     if (progress) progress.innerText = "Carregando chave de acesso...";
     
-    const res = await chrome.storage.local.get(['mal_access_token']);
-    const token = res.mal_access_token;
+    const token = await obterTokenDoBackground();
+    if (!token) {
+        if (progress) progress.innerText = "Erro: Usuário não está autenticado ou o token expirou.";
+        return;
+    }
     if (!token) {
         if (progress) progress.innerText = "Erro: Usuário não está autenticado no MAL.";
         return;
@@ -790,7 +996,7 @@ function recalcularMediaDoComentario(texto) {
             return;
         }
 
-        const match = linha.match(/^(.+?):\s*(\d+(?:[.,]\d+)?)/);
+        const match = inlineTrim(linha).match(/^(.+?):\s*(\d+(?:[.,]\d+)?)/);
         if (match) {
             let valor = parseFloat(match[2].replace(',', '.'));
             if (valor > 0 && valor <= 10) {
@@ -857,10 +1063,90 @@ function normalizarCriterio(nome) {
     if (nLimpo.includes("personagem") || nLimpo.includes("principal")) return "Personagens Principais";
     if (nLimpo.includes("antagonista")) return "Antagonista";
     if (nLimpo.includes("fotografia")) return "Direção de fotografia";
-
+    if (nLimpo.includes("trilha")) return "Trilha Sonora";
+    if (nLimpo.includes("efeito")) return "Efeitos Sonoros"; 
     return nome.trim();
 }
 
 function aplicarModoDeExibicao(mode) {
     chrome.runtime.sendMessage({ action: 'mudarModoExibicao', mode: mode });
+}
+
+// SINCRONIZAÇÃO LOCAL PARA O MAL
+async function executarSincronizacaoLocalParaMAL() {
+    const progress = document.getElementById('localSyncProgress');
+    if (progress) progress.innerText = "Analisando memória local...";
+    
+    const res = await chrome.storage.local.get(null);
+    const token = res.mal_access_token;
+    
+    if (!token) {
+        if (progress) progress.innerText = "Erro: Usuário não está autenticado no MAL.";
+        return;
+    }
+
+    let animesParaEnviar = [];
+    const isOfficialScore = res.officialScore === true;
+
+    for (let key in res) {
+        let dado = res[key];
+        if (typeof dado === 'object' && dado !== null && dado.mal_id && dado.media) {
+            animesParaEnviar.push({
+                titulo: key,
+                dados: dado
+            });
+        }
+    }
+
+    if (animesParaEnviar.length === 0) {
+        if (progress) progress.innerText = "Nenhuma review local encontrada na sua biblioteca.";
+        return;
+    }
+
+    if (!confirm(`Foram encontradas ${animesParaEnviar.length} reviews na sua memória local.\n\nDeseja fazer o upload delas para o seu MyAnimeList agora? (Isso pode sobrescrever as notas antigas desses animes na sua conta oficial).`)) {
+        if (progress) progress.innerText = "Upload cancelado.";
+        return;
+    }
+
+    if (progress) progress.innerText = "Iniciando upload... (Por favor, não feche esta aba)";
+
+    for (let i = 0; i < animesParaEnviar.length; i++) {
+        let item = animesParaEnviar[i];
+        let dados = item.dados;
+        if (progress) progress.innerText = `[${i + 1}/${animesParaEnviar.length}] Enviando "${item.titulo}"...`;
+
+        let listStr = "";
+        for (let k in dados) {
+            if (!['media', 'mal_id', 'capa', 'nome_oficial', 'nota_mal'].includes(k) && dados[k] > 0) {
+                let cleanKey = normalizarCriterio(k);
+                listStr += `\n${cleanKey}: ${dados[k]}`;
+            }
+        }
+        let coment = `Review Técnica:${listStr}\nMédia: ${dados.media}`;
+
+        let body = new URLSearchParams();
+        body.append('comments', coment);
+        
+        let notaCalculada = Math.round(parseFloat(dados.media));
+        if (isOfficialScore && notaCalculada > 0) {
+            body.append('score', notaCalculada.toString());
+        }
+
+        try {
+            await fetch(`https://api.myanimelist.net/v2/anime/${dados.mal_id}/my_list_status`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: body
+            });
+        } catch (err) {
+            console.error(`MAL Reviewer: Erro ao fazer upload de ${item.titulo}`, err);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    if (progress) progress.innerText = "Upload concluído com sucesso! Suas avaliações locais estão no MAL.";
 }

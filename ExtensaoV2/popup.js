@@ -13,7 +13,9 @@ function normalizarCriterio(nome) {
         { regex: /Coreografia/i, sub: "Coreografia de luta" },
         { regex: /Personagens/i, sub: "Personagens Principais" },
         { regex: /Antagonista/i, sub: "Antagonista" },
-        { regex: /Fotografia/i, sub: "Direção de fotografia" }
+        { regex: /Fotografia/i, sub: "Direção de fotografia" },
+        { regex: /Trilha/i, sub: "Trilha Sonora" },     
+        { regex: /Efeito/i, sub: "Efeitos Sonoros" }   
     ];
 
     for (let c of correcoes) {
@@ -36,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
     verificarConexaoNecessaria();
     configurarOuvintes();
 
-    chrome.storage.local.get(['syncMal', 'viewMode'], (res) => {
+    chrome.storage.local.get(['syncMal', 'viewMode', 'officialScore'], (res) => {
         if (res.syncMal) {
             const btn = document.getElementById('btnSalvar');
             btn.innerText = "SALVAR NO MAL";
@@ -46,6 +48,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const mode = res.viewMode || 'popup';
         document.body.classList.remove('popup-mode', 'sidepanel-mode');
         document.body.classList.add(mode + '-mode');
+
+        // 👈 Controla exibição do campo de nota oficial do MAL com base na preferência
+        const boxMalOficial = document.getElementById('malOfficialScoreBox');
+        if (boxMalOficial) {
+            boxMalOficial.style.display = res.officialScore ? 'none' : 'flex';
+        }
     });
 
     iniciarRapido();
@@ -146,10 +154,8 @@ async function iniciar(nomeInicial, epAtual, animeExato = null) {
     let nomeEhValido = !termosProibidos.some(termo => nomeInicial.toLowerCase().includes(termo.toLowerCase()));
     if (!nomeEhValido || !nomeInicial) nomeInicial = ""; 
 
-    // CHECAGEM DO MODO DE CORREÇÃO
     chrome.storage.local.get([nomeInicial, 'isCorrectionMode'], async function(result) {
         
-        // SE ESTIVER MODO CORREÇÃO, ESCONDE AS NOTAS E MOSTRA AS OPÇÕES DE CORREÇÃO
         if (result.isCorrectionMode) {
             let container = document.getElementById('correctionModeContainer');
             container.style.display = 'block';
@@ -163,7 +169,7 @@ async function iniciar(nomeInicial, epAtual, animeExato = null) {
             }
             
             divCorretor.innerHTML = `
-                <div style="font-size: 13px; margin-bottom: 5px; color: #fff;">Ou corrija apenas o número do episódio:</div>
+                <div style="font-size: 13px; margin-bottom: 5px; color: #fff;">Ou corrigirá apenas o número do episódio:</div>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <input type="number" id="inputCorrecaoEp" value="${epAtual || 1}" style="width: 50px; background: #222; color: #fff; border: 1px solid #6c5ce7; border-radius: 4px; padding: 4px;">
                     <button id="btnSalvarCorrecaoEp" style="background: #6c5ce7; color: #fff; border: none; border-radius: 4px; cursor: pointer; padding: 4px 10px; font-weight: bold;">Salvar Episódio</button>
@@ -178,6 +184,10 @@ async function iniciar(nomeInicial, epAtual, animeExato = null) {
                             chrome.tabs.sendMessage(tabs[0].id, { action: "FORCAR_EPISODIO", ep: newEp }, () => {
                                 let btnCancel = document.getElementById('btnCancelCorrection');
                                 if(btnCancel) btnCancel.click(); 
+                                
+                                chrome.storage.local.get(['autoCloseCorrection'], (res) => {
+                                    if (res.autoCloseCorrection ?? true) window.close();
+                                });
                             });
                         }
                     });
@@ -238,16 +248,14 @@ function limparInterface() {
     if (notaTecnicaHeader) notaTecnicaHeader.innerText = "-";
 }
 
-
 function configurarOuvintes() {
-    // 1. Ouvinte de Busca Manual
     document.getElementById('btnBuscar').addEventListener('click', async function() {
         const campoInput = document.getElementById('animeTitle');
         const termoOriginal = campoInput.value;
 
         if (termoOriginal.trim().length > 2) {
             console.log("Botão lupa clicado. Processando...");
-            limparInterface(); // Limpa a tela imediatamente ao clicar em buscar
+            limparInterface();
             
             const termoTraduzido = await traduzirParaIngles(termoOriginal);
             campoInput.value = termoTraduzido; 
@@ -256,7 +264,6 @@ function configurarOuvintes() {
             listaDiv.style.display = 'block';
             listaDiv.innerHTML = '<div style="padding:10px; color:#ccc;">Buscando...</div>';
 
-            // ATENÇÃO AQUI: isAuto: false!
             chrome.runtime.sendMessage({ action: 'buscarJikan', termo: termoTraduzido, isAuto: false }, (response) => {
                 if (chrome.runtime.lastError || !response || !response.success || !response.data || response.data.length === 0) {
                     listaDiv.innerHTML = '<div style="padding:10px; color:#ff7675;">Nenhum anime encontrado.</div>';
@@ -269,24 +276,27 @@ function configurarOuvintes() {
                     let div = document.createElement('div');
                     div.className = 'item-resultado';
                     div.innerHTML = `
-                        <img src="${anime.images.jpg.small_image_url}">
+                        <img src="${escapeHTML(anime.images.jpg.small_image_url || '')}">
                         <div>
-                            <b>${anime.title}</b><br>
-                            <small>${anoLista} • ${anime.media_type.toUpperCase()}</small>
+                            <b>${escapeHTML(anime.title)}</b><br>
+                            <small>${escapeHTML(anoLista)} • ${escapeHTML(anime.media_type.toUpperCase())}</small>
                         </div>`;
                     
                     div.addEventListener('click', () => {
-                        // Desativa o modo de correção (se estivesse ativo) quando clica na resposta
                         chrome.storage.local.set({ isCorrectionMode: false }, () => {
                             let areaAvaliacao = document.getElementById('areaDeAvaliacao');
                             if (areaAvaliacao) areaAvaliacao.style.display = 'block';
                             document.getElementById('correctionModeContainer').style.display = 'none';
                             
-                            ultimoNomeIniciado = ""; // CORREÇÃO: Força a aceitar qualquer clique
+                            ultimoNomeIniciado = ""; 
 
-                            selecionarAnime(anime, true); // true = Força o player a corrigir
+                            selecionarAnime(anime, true);
                             verificarNotaNoMAL(anime.mal_id);
                             listaDiv.style.display = 'none'; 
+                            
+                            chrome.storage.local.get(['autoCloseCorrection'], (res) => {
+                                if (res.autoCloseCorrection ?? true) window.close();
+                            });
                         });
                     });
                     listaDiv.appendChild(div);
@@ -295,7 +305,6 @@ function configurarOuvintes() {
         }
     });
 
-    // Limpa a tela assim que o usuário começar a apagar/digitar um novo nome
     document.getElementById('animeTitle').addEventListener('input', function() {
         limparInterface();
         document.getElementById('listaResultados').innerHTML = '';
@@ -316,23 +325,21 @@ function configurarOuvintes() {
     const btnLogin = document.getElementById('btnIrParaLogin');
     if (btnLogin) {
         btnLogin.addEventListener('click', () => {
-            chrome.runtime.openOptionsPage(); // Abre a página de opções para logar
-            window.close(); // Fecha o popup
+            chrome.runtime.openOptionsPage(); 
+            window.close(); 
         });
     }
 
     const btnLocal = document.getElementById('btnUsarLocal');
     if (btnLocal) {
         btnLocal.addEventListener('click', () => {
-            // Salva na memória que o usuário não quer o MAL
             chrome.storage.local.set({ syncMal: false }, () => {
-                document.getElementById('modalAvisoConexao').style.display = 'none'; // Esconde o modal
-                verificarModoDeSalvamento(); // Muda a cor do botão de salvar para roxo (Modo Local)
+                document.getElementById('modalAvisoConexao').style.display = 'none'; 
+                verificarModoDeSalvamento(); 
             });
         });
     }
 
-    // --- AQUI ESTÁ O BOTÃO DE CANCELAR O MODO DE CORREÇÃO ---
     const btnCancelCorrection = document.getElementById('btnCancelCorrection');
     if (btnCancelCorrection) {
         btnCancelCorrection.addEventListener('click', () => {
@@ -342,7 +349,7 @@ function configurarOuvintes() {
                 if (areaAvaliacao) areaAvaliacao.style.display = 'block'; 
                 
                 limparInterface();
-                ultimoNomeIniciado = ""; // CORREÇÃO: Limpa a memória para forçar o redesenho da tela
+                ultimoNomeIniciado = ""; 
                 
                 chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
                     if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { action: "CANCELAR_CORRECAO" });
@@ -372,7 +379,9 @@ async function traduzirParaIngles(titulo) {
 
 function gerarInterfaceDinamica(dadosSalvos = null) {
     const container = document.getElementById('containerNotasDinamico');
-    const defaultCriterios = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design", "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia"];
+    
+    // 👈 Adicionado "Trilha Sonora" e "Efeitos Sonoros" na lista base (Total: 12 critérios)
+    const defaultCriterios = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design", "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia", "Trilha Sonora", "Efeitos Sonoros"];
 
     if (!container) return;
 
@@ -448,6 +457,7 @@ function calcularMediaInteligente() {
     let contador = 0;
 
     selects.forEach(sel => {
+        if (sel.id === 'notaMalOficial') return; // 👈 Impede que a nota oficial interfira no cálculo da média técnica!
         let nota = parseFloat(sel.value);
         if (nota > 0) { 
             soma += nota;
@@ -512,9 +522,15 @@ function buscarNoJikan(termo, buscaAutomatica) {
                             if (areaAvaliacao) areaAvaliacao.style.display = 'block';
                             document.getElementById('correctionModeContainer').style.display = 'none';
                             
+                            ultimoNomeIniciado = ""; 
+
                             selecionarAnime(anime, true);
                             verificarNotaNoMAL(anime.mal_id);
                             listaDiv.style.display = 'none';  
+                            
+                            chrome.storage.local.get(['autoCloseCorrection'], (res) => {
+                                if (res.autoCloseCorrection ?? true) window.close();
+                            });
                     });
                 });
                 listaDiv.appendChild(div);
@@ -526,13 +542,15 @@ function buscarNoJikan(termo, buscaAutomatica) {
 function exibirEpisodioAtualNoPopup(ep) {
     const el = document.getElementById('epAssistindo');
     if (el && ep) {
-        el.innerHTML = `📺 Assistindo: Episódio <b id="textEpAtual">${ep}</b> 
+        el.innerHTML = `📺 Assistindo: Episódio <b id="textEpAtual"></b> 
         <button id="btnEditEp" style="background:none; border:none; cursor:pointer; font-size:12px; margin-left:5px; padding:0;" title="Corrigir Episódio">✏️</button>`;
         el.style.display = 'block';
 
-        // Evento de clique para transformar o número em um input
+        const textEpAtual = el.querySelector('#textEpAtual');
+        if (textEpAtual) textEpAtual.textContent = ep;
+
         document.getElementById('btnEditEp').addEventListener('click', () => {
-            el.innerHTML = `📺 Assistindo: <input type="number" id="inputEditEp" value="${ep}" style="width:45px; background:#222; color:#fff; border:1px solid #6c5ce7; border-radius:4px; padding:2px 4px;"> 
+            el.innerHTML = `📺 Assistindo: <input type="number" id="inputEditEp" value="${escapeHTML(ep)}" style="width:45px; background:#222; color:#fff; border:1px solid #6c5ce7; border-radius:4px; padding:2px 4px;"> 
             <button id="btnSaveEp" style="background:#6c5ce7; color:#fff; border:none; border-radius:4px; cursor:pointer; padding:2px 8px; margin-left:5px; font-weight:bold;">Salvar</button>`;
             
             document.getElementById('btnSaveEp').addEventListener('click', () => {
@@ -540,9 +558,8 @@ function exibirEpisodioAtualNoPopup(ep) {
                 if (!isNaN(newEp) && newEp > 0) {
                     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
                         if (tabs[0]) {
-                            // Envia o novo episódio para o content.js fazer o cálculo reverso do Offset
                             chrome.tabs.sendMessage(tabs[0].id, { action: "FORCAR_EPISODIO", ep: newEp }, () => {
-                                exibirEpisodioAtualNoPopup(newEp); // Volta o texto ao normal
+                                exibirEpisodioAtualNoPopup(newEp); 
                             });
                         }
                     });
@@ -587,28 +604,38 @@ function salvarDados() {
     
     let notasDinamicas = {};
     selects.forEach(sel => {
+        if (sel.id === 'notaMalOficial') return; // 👈 Ignora o seletor da nota do MAL para não entrar nos critérios técnicos
         let label = sel.getAttribute('data-criterio');
         notasDinamicas[label] = sel.value;
     });
+
+    let notaMalDropdown = document.getElementById('notaMalOficial');
+    let notaMalSalvar = notaMalDropdown ? parseInt(notaMalDropdown.value) : 0;
 
     let dados = {
         ...notasDinamicas, 
         media: mediaVal.toFixed(2),
         mal_id: malID,
         capa: document.getElementById('animeCapa').src,
-        nome_oficial: document.getElementById('animeNomeOficial').innerText
+        nome_oficial: document.getElementById('animeNomeOficial').innerText,
+        nota_mal: notaMalSalvar // 👈 Salva a nota individual no banco de dados local
     };
-
-    let salvar = {};
-    salvar[nomeChave] = dados;
-    chrome.storage.local.set(salvar);
 
     chrome.storage.local.get(['syncMal', 'officialScore', 'mal_access_token'], (config) => {
         let status = document.getElementById('status');
+        
+        // Se a nota do MAL e a técnica precisarem ser as mesmas, sobrescreve a nota de envio e de salvamento
+        if (config.officialScore) {
+            dados.nota_mal = Math.round(mediaVal);
+        }
+
+        let salvar = {};
+        salvar[nomeChave] = dados;
+        chrome.storage.local.set(salvar);
+
         if (config.syncMal && config.mal_access_token && malID) {
             status.innerText = "Sincronizando MAL...";
-            let notaMAL = config.officialScore ? Math.round(mediaVal) : 0;
-            enviarParaMAL(malID, notaMAL, config.mal_access_token, dados);
+            enviarParaMAL(malID, dados.nota_mal, config.mal_access_token, dados);
         } else {
             status.innerText = "Salvo Localmente!";
             setTimeout(() => status.innerText = "", 2000);
@@ -619,8 +646,8 @@ function salvarDados() {
 function enviarParaMAL(animeId, score, token, dados) {
     let listStr = "";
     for (let key in dados) {
-        if (!['media','mal_id','capa','nome_oficial'].includes(key) && dados[key] > 0) {
-            let cleanKey = normalizarCriterio(key); // Cura a chave antes de mandar pro MAL
+        if (!['media','mal_id','capa','nome_oficial','nota_mal'].includes(key) && dados[key] > 0) {
+            let cleanKey = normalizarCriterio(key); 
             listStr += `\n${cleanKey}: ${dados[key]}`;
         }
     }
@@ -659,9 +686,18 @@ function limparTitulo(t) {
         .trim();
 }
 
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 async function verificarNotaNoMAL(malId) {
     return new Promise((resolve) => {
-        // Envia o ID achado pelo AniList para buscar os dados oficiais no MAL
         chrome.runtime.sendMessage({ action: 'buscarDetalhesMAL', malId: malId }, (response) => {
             if (chrome.runtime.lastError || !response || !response.success) {
                 document.getElementById('notaUsuarioMAL').innerText = "-";
@@ -800,8 +836,6 @@ function verificarModoDeSalvamento() {
         }
     });
 }
-
-
 
 function inlineTrim(str) {
     return str ? str.trim() : "";

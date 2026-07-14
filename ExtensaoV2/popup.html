@@ -49,13 +49,33 @@
         </div>
       </div>
     </div>
+    
     <div id="areaDeAvaliacao">
+      <!-- CAMPO DE NOTA OFICIAL DO MAL (Escondido dinamicamente se officialScore for true) -->
+      <div id="malOfficialScoreBox" style="display: none; justify-content: space-between; align-items: center; background: rgba(108, 92, 231, 0.08); border: 1px solid rgba(108, 92, 231, 0.25); padding: 10px 12px; margin-bottom: 12px; border-radius: 8px; box-sizing: border-box;">
+          <span style="font-size: 13px; font-weight: bold; color: #fff;">Sua Nota Oficial (MAL)</span>
+          <select id="notaMalOficial" class="nota-select" style="width: 110px; background: #202024; color: #fff; border: 1px solid rgba(108, 92, 231, 0.4); border-radius: 4px; padding: 4px 6px; cursor: pointer; outline: none; font-size: 12px; font-weight: bold;">
+              <option value="0">-</option>
+              <option value="1">1.0 (Horrível)</option>
+              <option value="2">2.0</option>
+              <option value="3">3.0</option>
+              <option value="4">4.0</option>
+              <option value="5">5.0 (Médio)</option>
+              <option value="6">6.0</option>
+              <option value="7">7.0 (Bom)</option>
+              <option value="8">8.0</option>
+              <option value="9">9.0 (Ótimo)</option>
+              <option value="10">10.0 (Masterpiece)</option>
+          </select>
+      </div>
+
       <!-- Área de Notas DINÂMICA -->
       <div id="containerNotasDinamico" class="criteria-grid">
       </div>
+      
       <div class="footer">
         <div class="media-display">
-          <span>MÉDIA</span>
+          <span>MÉDIA TÉCNICA</span>
           <h1 id="mediaFinal">0.00</h1>
         </div>
         <button id="btnSalvar">SALVAR REVIEW</button>

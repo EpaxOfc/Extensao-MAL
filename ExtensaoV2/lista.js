@@ -13,7 +13,9 @@ function normalizarCriterio(nome) {
         { regex: /Coreografia/i, sub: "Coreografia de luta" },
         { regex: /Personagens/i, sub: "Personagens Principais" },
         { regex: /Antagonista/i, sub: "Antagonista" },
-        { regex: /Fotografia/i, sub: "Direção de fotografia" }
+        { regex: /Fotografia/i, sub: "Direção de fotografia" },
+        { regex: /Trilha/i, sub: "Trilha Sonora" },
+        { regex: /Efeito/i, sub: "Efeitos Sonoros" } 
     ];
 
     for (let c of correcoes) {
@@ -24,14 +26,27 @@ function normalizarCriterio(nome) {
     return n;
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    chrome.storage.local.get(['mal_access_token'], (res) => {
-        if (res.mal_access_token) {
-            carregarListaCompleta(res.mal_access_token);
-        } else {
-            document.getElementById('gridAnimes').innerHTML = "<h2 style='text-align:center; padding:40px;'>Faça login nas configurações da extensão.</h2>";
-        }
+function obterTokenDoBackground() {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action: 'obterTokenValido' }, (response) => {
+            if (chrome.runtime.lastError || !response || !response.success) {
+                resolve(null);
+            } else {
+                resolve(response.token);
+            }
+        });
     });
+}
+
+// Substitua o bloco correspondente no lista.js:
+document.addEventListener('DOMContentLoaded', async () => {
+    const token = await obterTokenDoBackground();
+    
+    if (token) {
+        carregarListaCompleta(token);
+    } else {
+        document.getElementById('gridAnimes').innerHTML = "<h2 style='text-align:center; padding:40px;'>Faça login nas configurações da extensão.</h2>";
+    }
 
     document.getElementById('filtroNome').addEventListener('input', filtrarLista);
     document.getElementById('ordenarPor').addEventListener('change', filtrarLista);
@@ -346,7 +361,9 @@ function ativarModoEdicao() {
     const containerInputs = document.getElementById('listaInputsTecnicos');
     containerInputs.innerHTML = "";
 
-    const defaultCriterios = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design", "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia"];
+    const defaultCriterios = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design",
+         "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia", 
+         "Trilha Sonora", "Efeitos Sonoros"];
 
     chrome.storage.local.get(['meusCriterios'], (res) => {
         let listaFinal = res.meusCriterios || [...defaultCriterios];
@@ -381,15 +398,18 @@ function adicionarInputCriterio(container, nome, valor) {
     const displayX = (areaEdicao && areaEdicao.style.display === 'block') ? 'flex' : 'none';
 
     div.innerHTML = `
-        <label>${nome}</label>
+        <label></label>
         <div class="input-group" style="display: flex; gap: 5px; align-items: center;">
-            <select class="nota-select-modal input-calculo" data-criterio="${nome}">
+            <select class="nota-select-modal input-calculo" data-criterio="">
                 <option value="0">-</option>
                 ${gerarOpcoes(valor)}
             </select>
             <button class="btn-delete-crit" type="button" title="Remover critério" style="display: ${displayX}; background: #ff7675; color: white; border: none; border-radius: 4px; padding: 0 8px; cursor: pointer; align-items: center; justify-content: center;">×</button>
         </div>
     `;
+    
+    div.querySelector('label').textContent = nome;
+    div.querySelector('select').setAttribute('data-criterio', nome);
     
     container.appendChild(div);
     
@@ -451,7 +471,8 @@ async function salvarNoMAL(id) {
     coment += `\nMédia: ${media}`;;
 
     try {
-        const res = await chrome.storage.local.get(['mal_access_token']);
+        const token = await obterTokenDoBackground();
+        if (!token) throw new Error("Não foi possível autenticar a sessão.");
         
         const body = new URLSearchParams();
         body.append('score', notaMal);
@@ -460,7 +481,7 @@ async function salvarNoMAL(id) {
         const req = await fetch(`https://api.myanimelist.net/v2/anime/${id}/my_list_status`, {
             method: 'PATCH',
             headers: { 
-                'Authorization': `Bearer ${res.mal_access_token}`, 
+                'Authorization': `Bearer ${token}`, 
                 'Content-Type': 'application/x-www-form-urlencoded' 
             },
             body: body

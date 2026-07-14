@@ -343,11 +343,9 @@ input, select {
 
 .nota-select-modal:focus { border-color: var(--accent); }
 
-/* Área de adicionar */
 .edit-row-add { display: flex; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border); }
 .edit-row-add input { flex: 1; background: #121214; border: 1px solid #333; padding: 10px; border-radius: 6px; color: white; }
 
-/* Botãozinho de + */
 #btnAddCriterio {
     background: #333; color: white; border: none; width: 42px; border-radius: 6px; 
     font-size: 20px; cursor: pointer; transition: 0.2s;
@@ -356,25 +354,22 @@ input, select {
 
 /* --- BOTÃO DE DELETAR CRITÉRIO --- */
 
-/* Agrupa o Select e o Botão na mesma linha */
 .input-group {
     display: flex;
-    gap: 8px; /* Espaço entre o select e o botão */
+    gap: 8px; 
     align-items: center;
 }
 
-/* O Select ocupa todo o espaço disponível */
 .input-group .nota-select-modal {
     flex: 1;
 }
 
-/* Estilo do botão de apagar */
 .btn-delete-crit {
-    background: rgba(231, 76, 60, 0.15); /* Fundo vermelho transparente */
+    background: rgba(231, 76, 60, 0.15);
     color: #ff6b6b;
     border: 1px solid #ff6b6b;
-    width: 40px;      /* Largura fixa */
-    height: 40px;     /* Mesma altura do input para alinhar */
+    width: 40px;   
+    height: 40px;     
     border-radius: 6px;
     cursor: pointer;
     font-size: 22px;
@@ -383,7 +378,7 @@ input, select {
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    padding-bottom: 4px; /* Ajuste fino para o X ficar centralizado */
+    padding-bottom: 4px;
 }
 
 .btn-delete-crit:hover {
@@ -395,11 +390,11 @@ input, select {
 .info-mal {
     display: flex;
     gap: 10px;
-    margin-top: auto; /* Empurra para o final do card body */
+    margin-top: auto; 
 }
 
 .info-badge {
-    background: #29292e; /* Um pouco mais claro que o fundo do card */
+    background: #29292e; 
     border: 1px solid var(--border);
     padding: 6px 10px;
     border-radius: 8px;
@@ -431,7 +426,6 @@ input, select {
     font-size: 13px;
 }
 
-/* Destaque opcional para a sua nota pessoal */
 .info-badge.destaque {
     border-left: 2px solid var(--accent);
 }
@@ -439,3 +433,4 @@ input, select {
 .info-badge.destaque .valor {
     color: var(--accent-hover);
 }
+

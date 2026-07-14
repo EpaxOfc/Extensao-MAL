@@ -2,7 +2,15 @@
 const CLIENT_ID = 'bbbe6e02d9d0140e9bad74dd1116d6b6'; 
 const REDIRECT_URI = chrome.identity.getRedirectURL(); 
 
-console.log("Sua Redirect URI é:", REDIRECT_URI);
+const HABILITAR_LOGS_DESENVOLVEDOR = false;
+
+function devLog(...args) {
+    if (HABILITAR_LOGS_DESENVOLVEDOR) {
+        console.log(...args);
+    }
+}
+
+devLog("Sua Redirect URI é:", REDIRECT_URI);
 
 function generateCodeVerifier() {
     const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -10,6 +18,17 @@ function generateCodeVerifier() {
     const values = new Uint32Array(64);
     crypto.getRandomValues(values);
     for (let i = 0; i < 64; i++) {
+        result += charset[values[i] % charset.length];
+    }
+    return result;
+}
+
+function generateRandomState() {
+    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    const values = new Uint32Array(16);
+    crypto.getRandomValues(values);
+    for (let i = 0; i < 16; i++) {
         result += charset[values[i] % charset.length];
     }
     return result;
@@ -29,8 +48,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true });
         return true;
     }
-     if (message.action === 'buscarJikan') {
-        executarBuscaJikan(message.termo, message.isAuto, sendResponse);
+    if (message.action === 'buscarJikan') {
+        executarBuscaJikan(message.termo, message.isAuto, message.isMovie, sendResponse);
         return true; 
     }
     if (message.action === 'buscarDetalhesMAL') {
@@ -61,12 +80,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true; 
     }
 
+    if (message.action === 'obterTokenValido') {
+        getValidAccessToken()
+            .then(token => {
+                sendResponse({ success: !!token, token: token });
+            })
+            .catch(err => {
+                sendResponse({ success: false, error: err.message });
+            });
+        return true;
+    }
+
     if (message.action === 'INJETAR_SONDA_NETFLIX') {
         if (chrome.scripting && chrome.scripting.executeScript) {
             chrome.scripting.executeScript({
                 target: { tabId: sender.tab.id },
                 world: 'MAIN', 
                 func: () => {
+                    // 🛠️ CHAVE DE DEPURAÇÃO DA SONDA (Mude para false para produção)
+                    const DEBUG_PROBE = false; 
+
                     if (window.malProbeInterval) clearInterval(window.malProbeInterval);
                     
                     window.malProbeInterval = setInterval(() => {
@@ -77,7 +110,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
                             let cache = window.netflix?.falcorCache?.videos;
                             
-                            // Cria um payload base, mesmo que o cache falhe
                             let payload = {
                                 uniqueId: vId,
                                 cacheEncontrado: false,
@@ -88,7 +120,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                                 movieTitle: null
                             };
 
-                            // Tenta ler o cache se ele existir
                             if (cache && cache[vId] && cache[vId].summary && cache[vId].summary.value) {
                                 payload.cacheEncontrado = true;
                                 let summary = cache[vId].summary.value;
@@ -99,7 +130,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                                 if (summary.type === 'movie' && cache[vId].title) {
                                     payload.movieTitle = cache[vId].title.value;
                                 } else {
-                                    // Tenta caçar o nome da série varrendo o cache
                                     for (let key in cache) {
                                         let item = cache[key];
                                         if (item?.summary?.value?.type === 'show' && item.title) {
@@ -119,41 +149,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                             
                             let newData = JSON.stringify(payload);
                             
-                            // Atualiza a tela APENAS se o ID do vídeo mudar ou se a Netflix finalmente atualizar o cache daquele vídeo
                             if (div.getAttribute('data-video') !== vId || div.innerText !== newData) {
                                 div.setAttribute('data-video', vId);
                                 div.innerText = newData;
 
-                                console.log("%c🔍 [SONDA NETFLIX - CACHE] Identificado novo vídeo!", "background: #e50914; color: #fff; font-weight: bold; padding: 4px; border-radius: 4px;", payload);
-                                
-                                let debugBox = document.getElementById('mal-debug-box');
-                                if (!debugBox) {
-                                    debugBox = document.createElement('div');
-                                    debugBox.id = 'mal-debug-box';
-                                    debugBox.style.cssText = 'position: fixed; top: 15px; left: 15px; background: rgba(0,0,0,0.85); color: #00ffcc; padding: 12px; z-index: 2147483647; border: 1px solid #00ffcc; border-radius: 8px; font-family: monospace; font-size: 13px; pointer-events: none; text-shadow: 1px 1px 0 #000; box-shadow: 0 4px 10px rgba(0,0,0,0.5);';
-                                    document.body.appendChild(debugBox);
+                                // 👁️ Os logs e a caixinha só serão renderizados se o DEBUG_PROBE for true
+                                if (DEBUG_PROBE) {
+                                    devLog("%c🔍 [SONDA NETFLIX - CACHE] Identificado novo vídeo!", "background: #e50914; color: #fff; font-weight: bold; padding: 4px; border-radius: 4px;", payload);
+                                    
+                                    let debugBox = document.getElementById('mal-debug-box');
+                                    if (!debugBox) {
+                                        debugBox = document.createElement('div');
+                                        debugBox.id = 'mal-debug-box';
+                                        debugBox.style.cssText = 'position: fixed; top: 15px; left: 15px; background: rgba(0,0,0,0.85); color: #00ffcc; padding: 12px; z-index: 2147483647; border: 1px solid #00ffcc; border-radius: 8px; font-family: monospace; font-size: 13px; pointer-events: none; text-shadow: 1px 1px 0 #000; box-shadow: 0 4px 10px rgba(0,0,0,0.5);';
+                                        document.body.appendChild(debugBox);
+                                    }
+                                    
+                                    let statusCache = payload.cacheEncontrado 
+                                        ? '<b style="color: #00b894;">SIM (Lido com sucesso)</b>' 
+                                        : '<b style="color: #ff7675;">NÃO (Netflix não atualizou)</b>';
+
+                                    debugBox.innerHTML = `
+                                        <strong style="color:#ff7675; font-size: 14px;">🔍 Sonda de Memória (Netflix)</strong><br>
+                                        <div style="margin-top: 6px; color: #fff; line-height: 1.5;">
+                                            ID do Vídeo: <b style="color: #fdcb6e;">${payload.uniqueId}</b><br>
+                                            Cache do Vídeo Existe?: ${statusCache}<br>
+                                            Tipo: <b style="color: #fdcb6e;">${payload.type}</b><br>
+                                            Série: <b style="color: #fdcb6e;">${payload.showTitle || 'N/A'}</b><br>
+                                            Temporada: <b style="color: #fdcb6e;">${payload.season || 'N/A'}</b><br>
+                                            Episódio: <b style="color: #fdcb6e;">${payload.episode || 'N/A'}</b>
+                                        </div>
+                                    `;
+
+                                    clearTimeout(window.malDebugTimeout);
+                                    window.malDebugTimeout = setTimeout(() => {
+                                        if(debugBox) debugBox.remove();
+                                    }, 12000);
                                 }
-                                
-                                let statusCache = payload.cacheEncontrado 
-                                    ? '<b style="color: #00b894;">SIM (Lido com sucesso)</b>' 
-                                    : '<b style="color: #ff7675;">NÃO (Netflix não atualizou)</b>';
-
-                                debugBox.innerHTML = `
-                                    <strong style="color:#ff7675; font-size: 14px;">🔍 Sonda de Memória (Netflix)</strong><br>
-                                    <div style="margin-top: 6px; color: #fff; line-height: 1.5;">
-                                        ID do Vídeo: <b style="color: #fdcb6e;">${payload.uniqueId}</b><br>
-                                        Cache do Vídeo Existe?: ${statusCache}<br>
-                                        Tipo: <b style="color: #fdcb6e;">${payload.type}</b><br>
-                                        Série: <b style="color: #fdcb6e;">${payload.showTitle || 'N/A'}</b><br>
-                                        Temporada: <b style="color: #fdcb6e;">${payload.season || 'N/A'}</b><br>
-                                        Episódio: <b style="color: #fdcb6e;">${payload.episode || 'N/A'}</b>
-                                    </div>
-                                `;
-
-                                clearTimeout(window.malDebugTimeout);
-                                window.malDebugTimeout = setTimeout(() => {
-                                    if(debugBox) debugBox.remove();
-                                }, 12000);
                             }
                         } catch(e) {}
                     }, 150);
@@ -167,13 +199,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function iniciarLogin(sendResponse) {
     const codeVerifier = generateCodeVerifier();
-    await chrome.storage.local.set({ temp_verifier: codeVerifier });
+    const state = generateRandomState();
+    
+    // Armazena o verifier e o state temporariamente no storage para validação pós-callback
+    await chrome.storage.local.set({ 
+        temp_verifier: codeVerifier,
+        temp_state: state
+    });
 
     const authUrl = new URL('https://myanimelist.net/v1/oauth2/authorize');
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', CLIENT_ID);
     authUrl.searchParams.set('code_challenge', codeVerifier);
-    authUrl.searchParams.set('code_challenge_method', 'plain'); 
+    authUrl.searchParams.set('code_challenge_method', 'plain');
+    authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
 
     try {
@@ -184,10 +223,23 @@ async function iniciarLogin(sendResponse) {
 
         const urlParams = new URL(redirectUrl).searchParams;
         const code = urlParams.get('code');
+        const stateRetornado = urlParams.get('state');
 
         if (code) {
-            const storage = await chrome.storage.local.get('temp_verifier');
+            const storage = await chrome.storage.local.get(['temp_verifier', 'temp_state']);
+            
+            // Valida se o 'state' que retornou da API é o mesmo que geramos inicialmente
+            if (!stateRetornado || stateRetornado !== storage.temp_state) {
+                console.error("MAL Reviewer: Tentativa de login rejeitada. O parâmetro 'state' de validação é inválido ou ausente.");
+                sendResponse({ success: false, error: 'Erro de validação (Sessão inválida ou potencial CSRF).' });
+                chrome.storage.local.remove(['temp_verifier', 'temp_state']);
+                return;
+            }
+
             const tokenData = await trocarCodePorToken(code, storage.temp_verifier);
+            
+            // Limpa as variáveis temporárias do Storage para higiene de dados
+            chrome.storage.local.remove(['temp_verifier', 'temp_state']);
             
             if (tokenData && tokenData.access_token) {
                 await chrome.storage.local.set({
@@ -202,9 +254,13 @@ async function iniciarLogin(sendResponse) {
             } else {
                 sendResponse({ success: false, error: 'Falha na troca de token.' });
             }
+        } else {
+            chrome.storage.local.remove(['temp_verifier', 'temp_state']);
+            sendResponse({ success: false, error: 'Fluxo interrompido ou código não recebido.' });
         }
     } catch (error) {
         console.error("Erro no fluxo:", error);
+        chrome.storage.local.remove(['temp_verifier', 'temp_state']);
         sendResponse({ success: false, error: error.message });
     }
 }
@@ -270,7 +326,7 @@ async function getValidAccessToken() {
         return tokenData.access_token;
     }
 
-    console.log("Renovando token automaticamente...");
+    devLog("Renovando token automaticamente...");
     return await refreshMalToken(tokenData.refresh_token);
 }
 
@@ -312,11 +368,11 @@ async function executarEnvioMAL(payload, sendResponse) {
 }
 
 // BUSCA HÍBRIDA (ANILIST -> MAL)
-async function executarBuscaJikan(termo, isAuto, sendResponse) {
+async function executarBuscaJikan(termo, isAuto, isMovie, sendResponse) {
     try {
         const termoLimpo = termo.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, "").trim();
 
-        // DICIONÁRIO DE EXCEÇÕES DIRETAS (Pula o AniList e busca o ID no MAL)
+        // DICIONÁRIO DE EXCEÇÕES DIRETAS
         const dicionarioIdsEspeciais = {
             "first kiss that never ends": { mal_id: 52198, force_split_eps: 4 },
             "stairway to adulthood": { mal_id: 61903 },
@@ -328,7 +384,7 @@ async function executarBuscaJikan(termo, isAuto, sendResponse) {
         for (let key in dicionarioIdsEspeciais) {
             if (termoLimpo.includes(key.replace(/[^a-z0-9 ]/g, ""))) {
                 let rule = dicionarioIdsEspeciais[key];
-                console.log(`MAL Reviewer: Exceção detectada! Puxando MAL ID ${rule.mal_id} direto.`);
+                devLog(`MAL Reviewer: Exceção detectada! Puxando MAL ID ${rule.mal_id} direto.`);
                 
                 const token = await getValidAccessToken();
                 const headers = token ? { 'Authorization': `Bearer ${token}` } : { 'X-MAL-CLIENT-ID': CLIENT_ID };
@@ -360,7 +416,6 @@ async function executarBuscaJikan(termo, isAuto, sendResponse) {
             }
         }
 
-
         // DICIONÁRIO DE TRADUÇÕES
         const localData = await chrome.storage.local.get(['customDict']);
         const dicionarioUsuario = localData.customDict || {};
@@ -368,6 +423,11 @@ async function executarBuscaJikan(termo, isAuto, sendResponse) {
         const dicionarioBruto = {
             "cyberpunk mercenarios": "cyberpunk edgerunners",
             "mercenarios": "cyberpunk edgerunners",
+            "dogulwang": "Dogul Wang",
+            "danmachi": "Is It Wrong to Try to Pick Up Girls in a Dungeon",
+            "danmachi - é errado tentar pegar garotas numa masmorra?": "Is It Wrong to Try to Pick Up Girls in a Dungeon",
+            "neko to ryuu": "The Cat and the Dragon",
+            "neko to ryu": "The Cat and the Dragon",
             "olhos de gato": "a whisker away",
             "amor de gata": "a whisker away", 
             "jujutsu kaisen zero": "jujutsu kaisen 0",
@@ -380,7 +440,6 @@ async function executarBuscaJikan(termo, isAuto, sendResponse) {
             "as 100 namoradas que te amam muuuuuito": "The 100 Girlfriends Who Really, Really, Really, Really, Really Love You",
             "diarios de uma apotecaria": "The Apothecary Diaries",
             "diario de uma apotecaria": "The Apothecary Diaries",
-
             "frieren e a jornada para o alem": "Sousou no Frieren",
             "frieren": "Frieren: Beyond Journey's End",
             "a veterana pitica da firma": "My Tiny Senpai", 
@@ -398,7 +457,6 @@ async function executarBuscaJikan(termo, isAuto, sendResponse) {
             "sobre minha reencarnacao como um slime": "That Time I Got Reincarnated as a Slime",
             "passeio na primavera azul": "Blue Spring Ride",
             "estrada da primavera azul": "Blue Spring Ride",
-
             "beastars - o lobo bom": "Beastars",
             "o lobo bom": "Beastars",
             "de yakuza a dono de casa": "The Way of the Househusband",
@@ -409,7 +467,6 @@ async function executarBuscaJikan(termo, isAuto, sendResponse) {
             "vidas ao vento": "The Wind Rises",
             "sussurros do coracao": "Whisper of the Heart",
             "o castelo no ceu": "Castle in the Sky",
-
             "minha adoravel cosplayer": "My Dress-Up Darling", 
             "sono bisque doll": "My Dress-Up Darling",
             "koihime musou: garotas intankaveis": "Koihime Musou",
@@ -484,7 +541,7 @@ async function executarBuscaJikan(termo, isAuto, sendResponse) {
             "as variacoes de grimm": "The Grimms Variations",
             "classe de assassinato": "Assassination Classroom",
             "a melancolia de haruhi suzumiya": "The Melancholy of Haruhi Suzumiya",
-
+            "kaguya: a princesa espacial" : "Cosmic princess Kaguya",
             ...dicionarioUsuario 
         };
 
@@ -507,118 +564,194 @@ async function executarBuscaJikan(termo, isAuto, sendResponse) {
             }
         }
 
-        if (!usouDicionario) {
-            termoTraduzido = await traduzirParaIngles(termo);
-        }
-
-        let termoFinalBusca = termoTraduzido; 
-        console.log(`MAL Reviewer: Buscando no AniList por: "${termoTraduzido}" | Modo Auto: ${isAuto}`);
+        let termoOriginalLimpo = termo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        let termoFinalBusca = usouDicionario ? termoTraduzido : termoOriginalLimpo;
+        
+        devLog(`MAL Reviewer: Buscando no AniList por: "${termoFinalBusca}" | Modo Auto: ${isAuto} | Modo Filme: ${isMovie}`);
 
         const query = `
-        query ($search: String) {
+        query ($search: String, $formatIn: [MediaFormat]) {
             Page(page: 1, perPage: 15) {
-                media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+                media(search: $search, type: ANIME, format_in: $formatIn, sort: SEARCH_MATCH) {
                     idMal
-                    title { romaji english }
+                    title { romaji english native } 
                     synonyms
                     format
                     episodes
                     duration 
                     seasonYear
+                    popularity
                     coverImage { medium large }
                     studios(isMain: true) { nodes { name } }
                 }
             }
         }`;
 
-        // Função interna para fazer a requisição ao AniList
-        const buscarGraphQL = async (searchText) => {
+        const buscarGraphQL = async (searchText, formats = null) => {
+            let vars = { search: searchText };
+            if (formats) vars.formatIn = formats;
+            
             const response = await fetch('https://graphql.anilist.co', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ query, variables: { search: searchText } })
+                body: JSON.stringify({ query, variables: vars })
             });
             if (!response.ok) throw new Error(`AniList HTTP Error! Status: ${response.status}`);
             const data = await response.json();
             return data.data.Page.media.filter(item => item.idMal != null);
         };
 
-        let resultados = await buscarGraphQL(termoTraduzido);
+        const executarBuscaInteligente = async (searchText) => {
+            if (isMovie) {
+                devLog(`MAL Reviewer: 🎬 Modo Filme ativado na API! Buscando formato MOVIE para: "${searchText}"`);
+                let res = await buscarGraphQL(searchText, ["MOVIE"]);
+                if (res.length > 0) return res;
+                
+                devLog(`MAL Reviewer: 0 filmes encontrados. Tentando OVA e SPECIAL...`);
+                res = await buscarGraphQL(searchText, ["OVA", "SPECIAL"]);
+                if (res.length > 0) return res;
+                
+                devLog(`MAL Reviewer: ❌ Nenhum MOVIE, OVA ou SPECIAL encontrado para "${searchText}"!`);
+                return [];
+            } else {
+                return await buscarGraphQL(searchText); 
+            }
+        };
 
-        if (resultados.length === 0 && (termoTraduzido.includes(':') || termoTraduzido.includes('-'))) {
-            let termoBase = termoTraduzido.split(/[:\-]/)[0].trim();
-            console.log(`MAL Reviewer: 0 resultados. Tentando buscar pela franquia raiz: "${termoBase}"`);
-            resultados = await buscarGraphQL(termoBase);
+        let resultados = await executarBuscaInteligente(termoFinalBusca);
+
+        if (resultados.length === 0 && termoFinalBusca.includes('-')) {
+            let termoSemHifem = termoFinalBusca;
+            termoSemHifem = termoSemHifem.replace(/-(san|sun|kun|chan|sama|dono|senpai|kohai)\b/gi, '___$1___');
+            termoSemHifem = termoSemHifem.replace(/-/g, '');
+            termoSemHifem = termoSemHifem.replace(/___(san|sun|kun|chan|sama|dono|senpai|kohai)___/gi, '-$1');
+            termoSemHifem = termoSemHifem.replace(/\s+/g, ' ').trim();
+
+            if (termoSemHifem !== termoFinalBusca) {
+                devLog(`MAL Reviewer: 0 resultados. Tentando limpar hífens comuns: "${termoSemHifem}"`);
+                resultados = await executarBuscaInteligente(termoSemHifem);
+                if (resultados.length > 0) termoFinalBusca = termoSemHifem;
+            }
+        }
+
+        let palavras = termoFinalBusca.split(/\s+/).filter(Boolean);
+        if (resultados.length === 0 && palavras.length > 2) {
+            let duasPrimeirasPalavras = palavras.slice(0, 2).join(' ');
+            devLog(`MAL Reviewer: 0 resultados. Tentando apenas as duas primeiras palavras: "${duasPrimeirasPalavras}"`);
+            resultados = await executarBuscaInteligente(duasPrimeirasPalavras);
+            if (resultados.length > 0) termoFinalBusca = duasPrimeirasPalavras;
+        }
+
+        if (resultados.length === 0 && !usouDicionario) {
+            devLog(`MAL Reviewer: 0 resultados para "${termoOriginalLimpo}". Tentando traduzir...`);
+            let termoEmIngles = await traduzirParaIngles(termoOriginalLimpo);
+            
+            if (termoEmIngles && termoEmIngles.toLowerCase() !== termoOriginalLimpo.toLowerCase()) {
+                resultados = await executarBuscaInteligente(termoEmIngles);
+                termoFinalBusca = termoEmIngles;
+            }
+        }
+
+        if (resultados.length === 0 && (termoFinalBusca.includes(':') || termoFinalBusca.includes('-'))) {
+            let termoBase = termoFinalBusca.split(/[:\-]/)[0].trim();
+            devLog(`MAL Reviewer: 0 resultados. Tentando buscar pela franquia raiz: "${termoBase}"`);
+            resultados = await executarBuscaInteligente(termoBase);
             termoFinalBusca = termoBase; 
         }
 
-        chrome.storage.local.get(['mal_completed_ids'], (localRes) => {
-            const completadosLocais = localRes.mal_completed_ids || [];
+        const localRes = await chrome.storage.local.get(['mal_completed_ids']);
+        const completadosLocais = localRes.mal_completed_ids || [];
 
-            let temporadasMapeadas = resultados.map(item => {
-                let listStatus = completadosLocais.includes(item.idMal) ? { status: 'completed' } : null;
-                // MÁGICA DO ESTÚDIO AQUI:
-                let mainStudio = (item.studios && item.studios.nodes && item.studios.nodes.length > 0) ? item.studios.nodes[0].name : "";
+        let temporadasMapeadas = resultados.map(item => {
+            let listStatus = completadosLocais.includes(item.idMal) ? { status: 'completed' } : null;
+            let mainStudio = (item.studios && item.studios.nodes && item.studios.nodes.length > 0) ? item.studios.nodes[0].name : "";
 
-                return {
-                    mal_id: item.idMal,
-                    title: item.title.english || item.title.romaji,
-                    episodes: item.episodes || 0,
-                    duration: item.duration || 0,
-                    year: item.seasonYear || 0,
-                    media_type: item.format ? item.format.toLowerCase() : "tv",
-                    alternative_titles: item.synonyms || [],
-                    my_list_status: listStatus,
-                    studio: mainStudio,
-                    images: {
-                        jpg: {
-                            image_url: item.coverImage.large || item.coverImage.medium,
-                            small_image_url: item.coverImage.medium || item.coverImage.large
-                        }
-                    }
-                };
-            });
-
-            const formatosValidos = ['tv', 'ona', 'movie', 'ova', 'special'];
-            temporadasMapeadas = temporadasMapeadas.filter(temp => formatosValidos.includes(temp.media_type));
-
-            if (!isAuto) {
-                return sendResponse({ success: true, data: temporadasMapeadas });
+            let todosOsNomes = [...(item.synonyms || [])];
+            
+            if (item.title) {
+                if (item.title.romaji) todosOsNomes.push(item.title.romaji);
+                if (item.title.english) todosOsNomes.push(item.title.english);
+                if (item.title.native) todosOsNomes.push(item.title.native);
             }
 
-            const cleanStr = (s) => s ? s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "") : "";
-            const cleanSpace = (s) => s ? s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, " ").trim() : "";
-            
-            const qStr = cleanStr(termoFinalBusca);
-            const qSpace = cleanSpace(termoFinalBusca);
-
-            let temporadasFiltradas = temporadasMapeadas.filter(temp => {
-                const titulosValidos = [temp.title, ...temp.alternative_titles];
-                return titulosValidos.some(titulo => {
-                    const tStr = cleanStr(titulo);      
-                    const tSpace = cleanSpace(titulo);  
-
-                    if (tStr.startsWith(qStr) || qStr.startsWith(tStr)) return true;
-                    if (new RegExp(`\\b${qSpace}\\b`, 'i').test(tSpace)) return true;
-
-                    const tWords = tSpace.split(' ');
-                    const qWords = qSpace.split(' ');
-                    if (tWords[0] === qWords[0]) return true;
-
-                    return false;
-                });
-            });
-
-            // Reorganiza SÉRIES por ano (S1, S2...).
-            temporadasFiltradas.sort((a, b) => {
-                const anoA = a.year === 0 ? 9999 : a.year;
-                const anoB = b.year === 0 ? 9999 : b.year;
-                if (anoA !== anoB) return anoA - anoB;
-                return a.mal_id - b.mal_id;
-            });
-
-            sendResponse({ success: true, data: temporadasFiltradas });
+            return {
+                mal_id: item.idMal,
+                title: item.title ? (item.title.english || item.title.romaji) : "Título Indisponível",
+                episodes: item.episodes || 0,
+                duration: item.duration || 0,
+                year: item.seasonYear || 0,
+                popularity: item.popularity || 0,
+                media_type: item.format ? item.format.toLowerCase() : "tv",
+                alternative_titles: todosOsNomes, 
+                my_list_status: listStatus,
+                studio: mainStudio,
+                images: {
+                    jpg: {
+                        image_url: item.coverImage ? (item.coverImage.large || item.coverImage.medium) : "",
+                        small_image_url: item.coverImage ? (item.coverImage.medium || item.coverImage.large) : ""
+                    }
+                }
+            };
         });
+
+        const formatosValidos = ['tv', 'ona', 'movie', 'ova', 'special'];
+        temporadasMapeadas = temporadasMapeadas.filter(temp => formatosValidos.includes(temp.media_type));
+
+        if (!isAuto) {
+            return sendResponse({ success: true, data: temporadasMapeadas });
+        }
+
+        const cleanStr = (s) => s ? s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "") : "";
+        const cleanSpace = (s) => s ? s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, " ").trim() : "";
+        
+        const qStr = cleanStr(termoFinalBusca);
+        const qSpace = cleanSpace(termoFinalBusca);
+
+        let temporadasFiltradas = temporadasMapeadas.filter(temp => {
+            const titulosValidos = [temp.title, ...temp.alternative_titles];
+            return titulosValidos.some(titulo => {
+                const tStr = cleanStr(titulo);      
+                const tSpace = cleanSpace(titulo);  
+
+                if (!tStr || tStr.length === 0) return false; 
+
+                if (tStr.startsWith(qStr) || qStr.startsWith(tStr)) return true;
+                if (new RegExp(`\\b${qSpace}\\b`, 'i').test(tSpace)) return true;
+
+                const tWords = tSpace.split(' ');
+                const qWords = qSpace.split(' ');
+                if (tWords[0] === qWords[0]) return true;
+
+                return false;
+            });
+        });
+
+        if (temporadasFiltradas.length === 0 && temporadasMapeadas.length > 0) {
+            devLog(`MAL Reviewer: Filtro automático muito agressivo. Confiando no Top 1 do AniList!`);
+            temporadasFiltradas = [temporadasMapeadas[0]];
+        }
+
+        temporadasFiltradas.sort((a, b) => {
+            const aExact = [a.title, ...a.alternative_titles].some(t => cleanStr(t) === qStr);
+            const bExact = [b.title, ...b.alternative_titles].some(t => cleanStr(t) === qStr);
+            
+            if (aExact && !bExact) return -1;
+            if (!aExact && bExact) return 1;
+            if (aExact && bExact) return (b.popularity || 0) - (a.popularity || 0);
+
+            const aFranchise = [a.title, ...a.alternative_titles].some(t => cleanStr(t).startsWith(qStr));
+            const bFranchise = [b.title, ...b.alternative_titles].some(t => cleanStr(t).startsWith(qStr));
+            
+            if (aFranchise && !bFranchise) return -1;
+            if (!aFranchise && bFranchise) return 1;
+
+            const anoA = a.year === 0 ? 9999 : a.year;
+            const anoB = b.year === 0 ? 9999 : b.year;
+            if (anoA !== anoB) return anoA - anoB;
+            return a.mal_id - b.mal_id;
+        });
+
+        sendResponse({ success: true, data: temporadasFiltradas });
 
     } catch (err) {
         sendResponse({ success: false, error: err.message });
