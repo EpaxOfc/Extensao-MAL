@@ -1,0 +1,3 @@
+const CONFIG = {
+    CLIENT_ID: 'COLOQUE_SEU_CLIENT_ID_AQUI'
+};

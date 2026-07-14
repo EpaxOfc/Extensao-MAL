@@ -1,5 +1,7 @@
 // Credenciais seguras (Configurado como App "Other")
-const CLIENT_ID = 'bbbe6e02d9d0140e9bad74dd1116d6b6'; 
+importScripts('config.js');
+
+const CLIENT_ID = CONFIG.CLIENT_ID; 
 const REDIRECT_URI = chrome.identity.getRedirectURL(); 
 
 const HABILITAR_LOGS_DESENVOLVEDOR = true;
@@ -169,15 +171,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                                         ? '<b style="color: #00b894;">SIM (Lido com sucesso)</b>' 
                                         : '<b style="color: #ff7675;">NÃO (Netflix não atualizou)</b>';
 
+                                    const escapeStr = (str) => String(str).replace(/[&<>"']/g, m => ({
+                                        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                                    })[m]);
+
                                     debugBox.innerHTML = `
                                         <strong style="color:#ff7675; font-size: 14px;">🔍 Sonda de Memória (Netflix)</strong><br>
                                         <div style="margin-top: 6px; color: #fff; line-height: 1.5;">
-                                            ID do Vídeo: <b style="color: #fdcb6e;">${payload.uniqueId}</b><br>
+                                            ID do Vídeo: <b style="color: #fdcb6e;">${escapeStr(payload.uniqueId)}</b><br>
                                             Cache do Vídeo Existe?: ${statusCache}<br>
-                                            Tipo: <b style="color: #fdcb6e;">${payload.type}</b><br>
-                                            Série: <b style="color: #fdcb6e;">${payload.showTitle || 'N/A'}</b><br>
-                                            Temporada: <b style="color: #fdcb6e;">${payload.season || 'N/A'}</b><br>
-                                            Episódio: <b style="color: #fdcb6e;">${payload.episode || 'N/A'}</b>
+                                            Tipo: <b style="color: #fdcb6e;">${escapeStr(payload.type)}</b><br>
+                                            Série: <b style="color: #fdcb6e;">${escapeStr(payload.showTitle || 'N/A')}</b><br>
+                                            Temporada: <b style="color: #fdcb6e;">${escapeStr(payload.season || 'N/A')}</b><br>
+                                            Episódio: <b style="color: #fdcb6e;">${escapeStr(payload.episode || 'N/A')}</b>
                                         </div>
                                     `;
 

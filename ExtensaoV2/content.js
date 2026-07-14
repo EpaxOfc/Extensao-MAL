@@ -504,7 +504,25 @@ const intervaloCheck = setInterval(() => {
             const sitesCustomizados = res.customUrls || [];
             urlsPermitidas.push(...sitesCustomizados);
 
-            const siteEhMonitorado = urlsPermitidas.some(site => url.includes(site));
+            const urlObj = new URL(window.location.href);
+            const hostname = urlObj.hostname;
+            const pathname = urlObj.pathname;
+
+            const siteEhMonitorado = urlsPermitidas.some(site => {
+                if (site.includes('/')) {
+                    const partes = site.split('/');
+                    const dominio = partes[0];
+                    const caminho = partes.slice(1).join('/');
+                    return (hostname === dominio || hostname.endsWith('.' + dominio)) && pathname.includes(caminho);
+                }
+                
+                if (site === "amazon.") {
+                    return hostname.includes("amazon.");
+                }
+                
+                return hostname === site || hostname.endsWith('.' + site);
+            });
+
             if (siteEhMonitorado) {
                 monitorando = true;
                 window.videoSendoMonitorado = videoValido;
