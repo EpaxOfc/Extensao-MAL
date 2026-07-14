@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'autoCompleteOnLast', 'blockRegressionOnComplete', 'autoOpenOverlayIfNoScore', 'allowInFullscreen', 
         'discreetOverlayFs', 'discreetProgressFs', 'discreetFlashFs', 'enableToastExp', 'enableToastMicro', 
         'enableToastFlash', 'enableOverlay', 'sizeToastExp', 'sizeToastMicro', 'sizeToastFlash', 'sizeOverlay', 
-        'enablePrimeBasic', 'enablePrimeAdvanced', 'forceSidePanel', 'autoCloseCorrection', 'netflixCrSubs'];    
+        'enablePrimeBasic', 'enablePrimeAdvanced', 'forceSidePanel', 'autoCloseCorrection', 'netflixCrSubs', 'enableGoogleDrive'];    
     liveKeys.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -463,7 +463,7 @@ function carregarConfig() {
         'mal_access_token', 'customUrls', 'customDict',
         'allowInFullscreen', 'enableToastExp', 'enableToastMicro', 'enableToastFlash', 'enableOverlay',
         'sizeToastExp', 'sizeToastMicro', 'sizeToastFlash', 'sizeOverlay',
-        'enablePrimeBasic', 'enablePrimeAdvanced', 'netflixCrSubs', 'netflixSubSize'
+        'enablePrimeBasic', 'enablePrimeAdvanced', 'netflixCrSubs', 'netflixSubSize', 'enableGoogleDrive'
     ], (res) => {
         
         const viewModeEl = document.getElementById('viewMode');
@@ -502,6 +502,9 @@ function carregarConfig() {
         if (document.getElementById('blockRegressionOnComplete')) document.getElementById('blockRegressionOnComplete').checked = res.blockRegressionOnComplete ?? true;
         if (document.getElementById('autoOpenOverlayIfNoScore')) document.getElementById('autoOpenOverlayIfNoScore').checked = res.autoOpenOverlayIfNoScore ?? true;
 
+        const checkDrive = document.getElementById('enableGoogleDrive');
+        if (checkDrive) checkDrive.checked = res.enableGoogleDrive ?? false; 
+
         // INICIALIZAÇÃO DOS BOTÕES DO PRIME VIDEO (Desativados por padrão)
         const checkPrimeBasic = document.getElementById('enablePrimeBasic');
         if (checkPrimeBasic) checkPrimeBasic.checked = res.enablePrimeBasic ?? false;
@@ -524,6 +527,7 @@ function carregarConfig() {
                 }
             });
         }
+
 
         // INICIALIZADOR DOS NOVOS CONTROLES
         const checks = {

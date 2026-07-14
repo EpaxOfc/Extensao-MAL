@@ -40,6 +40,7 @@ let ultimoEpisodioAssistido = null;
 let ultimoTotalEpisodios = null;
 let netflixSeasonTrap = null;
 let offsetManualFix = 0;
+let cfgEnableGoogleDrive = false;
 
 let cfgAutoUpdateProgress = true;      
 let cfgAutoUpdateTrigger = '80percent'; 
@@ -49,7 +50,7 @@ let cfgAutoOpenOverlayIfNoScore = true;
 let cfgEnablePrimeBasic = false;
 let cfgEnablePrimeAdvanced = false;
 
-const HABILITAR_LOGS_DESENVOLVEDOR = false;
+const HABILITAR_LOGS_DESENVOLVEDOR = true;
 
 function devLog(...args) {
     if (HABILITAR_LOGS_DESENVOLVEDOR) {
@@ -98,15 +99,17 @@ function solicitarInfoDaPaginaPrincipal() {
     });
 }
 
-chrome.storage.local.get(['enablePrimeBasic', 'enablePrimeAdvanced'], (res) => {
+chrome.storage.local.get(['enablePrimeBasic', 'enablePrimeAdvanced', 'enableGoogleDrive'], (res) => {
     if (res.enablePrimeBasic !== undefined) cfgEnablePrimeBasic = res.enablePrimeBasic;
     if (res.enablePrimeAdvanced !== undefined) cfgEnablePrimeAdvanced = res.enablePrimeAdvanced;
+    if (res.enableGoogleDrive !== undefined) cfgEnableGoogleDrive = res.enableGoogleDrive;
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local') {
         if (changes.enablePrimeBasic) cfgEnablePrimeBasic = changes.enablePrimeBasic.newValue;
         if (changes.enablePrimeAdvanced) cfgEnablePrimeAdvanced = changes.enablePrimeAdvanced.newValue;
+        if (changes.enableGoogleDrive) cfgEnableGoogleDrive = changes.enableGoogleDrive.newValue;
 
         if (changes.netflixSubSize || changes.netflixCrSubs) {
             chrome.storage.local.get(['netflixCrSubs', 'netflixSubSize'], (res) => {
@@ -378,6 +381,44 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
         sendResponse({success: true});
     }
+
+    if (request.action === "RENDERIZAR_TOAST_DELEGADO") {
+        if (window === window.top) {
+            animeDetectado = request.anime; 
+            totalEpisodiosAnime = request.epTotal;
+            mostrarToastRastreio(request.anime, request.epAtual, request.epTotal, request.seasonNum);
+        }
+        return;
+    }
+    if (request.action === "RENDERIZAR_OVERLAY_DELEGADO") {
+        if (window === window.top) {
+            animeDetectado = request.anime;
+            mostrarOverlay();
+        }
+        return;
+    }
+    if (request.action === "ATUALIZAR_PROGRESSO_DELEGADO") {
+        if (window === window.top) {
+            let pct = request.pct;
+            let microFill = document.getElementById('micro-progress-fill');
+            if (microFill) microFill.style.width = `${pct}%`;
+            let hoverFill = document.querySelector('.hover-episode-fill');
+            if (hoverFill) hoverFill.style.width = `${pct}%`;
+        }
+        return;
+    }
+    if (request.action === "FLASH_TOAST_DELEGADO") {
+        if (window === window.top) {
+            forcarFlashLocal();
+        }
+        return;
+    }
+    if (request.action === "REDEFINIR_TOAST_DELEGADO") {
+        if (window === window.top) {
+            resetarMonitoramentoLocalOnly();
+        }
+        return;
+    }
 });
 
 
@@ -454,7 +495,12 @@ const intervaloCheck = setInterval(() => {
 
     if (videoValido) {
         chrome.storage.local.get(['customUrls'], (res) => {
-            const urlsPermitidas = ["netflix.com", "crunchyroll.com", "primevideo.com", "amazon.", "youtube.com/embed", "youtube-nocookie.com/embed", "animefire.io", "animesonlinecc.to", "meusanimes.blog", "goyabu.io", "betteranime.io"];
+            const urlsPermitidas = ["netflix.com", "crunchyroll.com", "primevideo.com", "amazon.", "youtube.com/embed", "youtube-nocookie.com/embed", "animefire.io", "animesonlinecc.to", "meusanimes.blog", "goyabu.io", "betteranime.io", "drive.google.com"];
+            let driveAtivo = res.enableGoogleDrive ?? false;
+            if (driveAtivo) {
+                urlsPermitidas.push("drive.google.com");
+            }
+
             const sitesCustomizados = res.customUrls || [];
             urlsPermitidas.push(...sitesCustomizados);
 
@@ -469,51 +515,9 @@ const intervaloCheck = setInterval(() => {
 }, 3000);
 
 function resetarMonitoramento() {
-    currentSessionToken++;
-    // Desconecta e limpa os observadores de legendas ativos
-    if (netflixSubObserver) {
-        netflixSubObserver.disconnect();
-        netflixSubObserver = null;
-    }
-    if (netflixParentObserver) {
-        netflixParentObserver.disconnect();
-        netflixParentObserver = null;
-    }
-
-    monitorando = false;
-    animeDetectado = null;
-    overlayCriado = false;
-    totalEpisodiosAnime = 0;
-    numeroEpisodioAtual = null; 
-    malProgressoSincronizado = false;
-    verificandoNota = false;  
-    termoBuscaOriginal = "";
-    isCorrecaoManual = false;
-    episodioRelativoAtual = 1;
-    netflixTituloSalvo = "";
-    netflixTemporadaSalva = null;
-    netflixEpisodioSalvo = null;
-    netflixUniqueIdSalvo = null;
-    idPlataformaAtual = null;
-    offsetManualFix = 0;
-        
-    window.ultimoEpProcessadoOTM = null;
-    window.videoSendoMonitorado = null;
-    window.lastUrlMonitorada = null;
-    window.lastEpisodioDetectado = null;
-    
-    // Mata a Sonda Visual
-    let sondaDiv = document.getElementById('mal-reviewer-netflix-data');
-    if (sondaDiv) { sondaDiv.innerText = ""; sondaDiv.removeAttribute('data-video'); }
-    
-    const overlayAntigo = document.getElementById('mal-overlay-container');
-    if (overlayAntigo) overlayAntigo.remove();
-
-    const toastAntigo = document.getElementById('mal-tracking-toast');
-    if (toastAntigo) {
-        isToastDismissed = true; 
-        clearTimeout(toastTimeout);
-        toastAntigo.remove();
+    resetarMonitoramentoLocalOnly();
+    if (window !== window.top) {
+        chrome.runtime.sendMessage({ action: "REDEFINIR_TOAST_AO_TOPO" });
     }
 }
 
@@ -524,7 +528,7 @@ function iniciarMonitoramento(video) {
         return;
     }
 
-    // 🔥 Registra a nova sessão ativa e reseta sinalizadores
+    // Registra a nova sessão ativa e reseta sinalizadores
     currentSessionToken++;
     let mySessionToken = currentSessionToken;
     isToastDismissed = false; 
@@ -571,7 +575,6 @@ function iniciarMonitoramento(video) {
 
         const executarRastreio = (tentativa = 1) => {
             detectarNomeAnime().then(nome => {
-                // 🔥 Se a sessão mudou durante a espera assíncrona, aborta silenciosamente
                 if (mySessionToken !== currentSessionToken || !monitorando) {
                     devLog("MAL Reviewer: 🛑 Sessão antiga abortada.");
                     return;
@@ -660,6 +663,14 @@ function iniciarMonitoramento(video) {
                 if (microFill) microFill.style.width = `${pct}%`;
                 let hoverFill = document.querySelector('.hover-episode-fill');
                 if (hoverFill) hoverFill.style.width = `${pct}%`;
+
+                if (window !== window.top) {
+                    let agora = Date.now();
+                    if (!window.ultimoEnvioProgresso || agora - window.ultimoEnvioProgresso > 1500) {
+                        window.ultimoEnvioProgresso = agora;
+                        chrome.runtime.sendMessage({ action: "ATUALIZAR_PROGRESSO_TOAST", pct: pct });
+                    }
+                }
             }
 
             if (!totalEpisodiosAnime || totalEpisodiosAnime === 0) return;
@@ -768,50 +779,10 @@ function iniciarMonitoramento(video) {
                     sincronizarProgressoNoMAL(animeDetectado.mal_id, epParaEnviar, statusParaEnviar);
 
                     if (!isToastDismissed && window.cfgEnableToastFlash !== false) {
-                        const executarFlash = () => {
-                            let toast = document.getElementById('mal-tracking-toast');
-                            
-                            if (!toast) {
-                                mostrarToastRastreio(animeDetectado, epRelativo, totalEpisodiosAnime);
-                                toast = document.getElementById('mal-tracking-toast');
-                            }
-                            if (!toast) return;
-
-                            clearTimeout(toastTimeout); 
-                            toast.style.display = 'block';
-
-                            let extraClasses = [];
-                            let isFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
-                            if (isFs && window.cfgAllowInFullscreen !== false) {
-                                if (window.cfgDiscreetProgressFs) extraClasses.push('fs-discreet-prog');
-                                if (window.cfgDiscreetFlashFs) extraClasses.push('fs-discreet-flash-enabled');
-                            }
-
-                            toast.className = `mostrar flash-mode size-flash-${window.cfgSizeToastFlash || 'medium'} ${extraClasses.join(' ')}`;
-                            
-                            setTimeout(() => { 
-                                if (isToastDismissed) return;
-                                toast.className = `mostrar micro-mode size-micro-${window.cfgSizeToastMicro || 'medium'} size-exp-${window.cfgSizeToastExp || 'medium'} ${extraClasses.join(' ')}`;
-                                isToastMicro = true;
-                                isHoverMode = false;
-                            }, 3000);
-                        };
-
-                        let isFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
-                        if (isFs && window.cfgAllowInFullscreen === false) {
-                            let tExistente = document.getElementById('mal-tracking-toast');
-                            if(tExistente) tExistente.style.display = 'none'; 
-                            
-                            const exitFsHandler = () => {
-                                let nowFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
-                                if (!nowFs) {
-                                    executarFlash();
-                                    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(e => document.removeEventListener(e, exitFsHandler));
-                                }
-                            };
-                            ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(e => document.addEventListener(e, exitFsHandler));
+                        if (window !== window.top) {
+                            chrome.runtime.sendMessage({ action: "FLASH_TOAST_AO_TOPO" });
                         } else {
-                            executarFlash();
+                            forcarFlashLocal();
                         }
                     }
                 }
@@ -846,6 +817,24 @@ function detectarEpisodioAtual() {
 
     if (window !== window.top && window.epAbsDoIframe !== undefined) {
         return window.epAbsDoIframe;
+    }
+
+    // EXTRAÇÃO DEDICADA DE EPISÓDIO PARA GOOGLE DRIVE
+    if (url.includes("drive.google.com")) {
+        if (!cfgEnableGoogleDrive) return null;
+        let spanTitle = document.querySelector('span[data-is-tooltip-wrapper="true"] span');
+        let txt = spanTitle ? spanTitle.textContent : document.title;
+        if (txt) {
+            let match = txt.match(/(?:[Ee]pis[oó]dio|[Ee]pisode|[Ee]p\.|[Ee]p|[Ee])[-.\s]*(\d+)/i);
+            if (match) {
+                return parseInt(match[1]);
+            }
+            let matchFormat2 = txt.match(/[-_\s](\d+)\.(?:mp4|mkv|avi|mov|webm)/i);
+            if (matchFormat2) {
+                return parseInt(matchFormat2[1]);
+            }
+        }
+        return 1; // Fallback caso não ache nenhuma numeração
     }
 
     // Verificação de Palavras-Chave no título da página
@@ -948,6 +937,28 @@ async function detectarNomeAnime() {
             idPlataformaAtual = "GENERIC_IFRAME";
             window.epAbsDoIframe = infoTop.ep;
             return infoTop.nome;
+        }
+    }
+
+    // EXTRAÇÃO DE NOME PARA GOOGLE DRIVE
+    if (url.includes("drive.google.com")) {
+        if (!cfgEnableGoogleDrive) return null;
+        let spanTitle = document.querySelector('span[data-is-tooltip-wrapper="true"] span');
+        if (spanTitle && spanTitle.textContent) {
+            let rawName = spanTitle.textContent.trim();
+            
+            rawName = rawName.replace(/\.(mp4|mkv|avi|mov|wmv|flv|webm)$/i, '');
+            
+            let cleanedName = rawName
+                .replace(/\s*[-_]?\s*(?:[Ee]pis[oó]dio|[Ee]pisode|[Ee]p\.|[Ee]p|[Ee])[-_\s]*\d+.*$/i, "")
+                .replace(/[-_]\s*\d+\s*$/i, "")
+                .replace(/[-_]/g, ' ')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+
+            idPlataformaAtual = "DRIVE_" + btoa(encodeURIComponent(cleanedName)).substring(0, 15);
+            devLog(`MAL Reviewer: 📂 [GOOGLE DRIVE] Nome extraído do span: "${cleanedName}"`);
+            return cleanedName;
         }
     }
     
@@ -1333,7 +1344,6 @@ function selecionarTemporadaAdequada(epAbsolute, duracaoVideoEmMinutos = 0, ehFi
             return [temp.title, ...alternativos].filter(Boolean);
         };
 
-        // Filtra as mídias: Mantém Movies, e permite ONAs/Specials apenas se tiverem 1 ou 2 episódios
         let candidatosFiltrados = candidatos.filter(temp => {
             let mType = (temp.media_type || '').toLowerCase();
             let eps = temp.episodes || 0;
@@ -1342,7 +1352,6 @@ function selecionarTemporadaAdequada(epAbsolute, duracaoVideoEmMinutos = 0, ehFi
 
         for (let temp of candidatosFiltrados) {
             let pontuacao = 0;
-            
             pontuacao += 200;
 
             if (duracaoVideoEmMinutos > 0 && temp.duration > 0) {
@@ -1355,7 +1364,7 @@ function selecionarTemporadaAdequada(epAbsolute, duracaoVideoEmMinutos = 0, ehFi
             for (let t of titulos) {
                 let nomeTemp = limpaString(t);
                 if (nomeTemp === nomeAlvo) { 
-                    pontuacao += 1000; // Peso massivo para nome exato
+                    pontuacao += 1000;
                     break; 
                 } else if (!nomeParcialAplicado && (nomeTemp.includes(nomeAlvo) || nomeAlvo.includes(nomeTemp))) { 
                     pontuacao += 30; 
@@ -1402,14 +1411,52 @@ function selecionarTemporadaAdequada(epAbsolute, duracaoVideoEmMinutos = 0, ehFi
     let temporadaSelecionada = series[0];
     let numBuscado = null;
 
-    let mTemp = termoBusca.toLowerCase().match(/(\d+)(?:nd|rd|th)\s*season|season\s*(\d+)/);
-    if (mTemp) numBuscado = parseInt(mTemp[1] || mTemp[2]);
-    if (!numBuscado && window.location.href.includes("netflix.com") && netflixTemporadaSalva > 1) { numBuscado = netflixTemporadaSalva; }
+    const dicionarioTemporadasFranquia = [
+        { termo: "war of underworld", season: 3 },
+        { termo: "alicization", season: 3 },
+        { termo: "final season", season: 4 },
+        { termo: "season 2", season: 2 },
+        { termo: "season 3", season: 3 },
+        { termo: "season 4", season: 4 }
+    ];
+    
+    let nomeBaixo = termoBusca.toLowerCase();
+    for (let regra of dicionarioTemporadasFranquia) {
+        if (nomeBaixo.includes(regra.termo)) {
+            numBuscado = regra.season;
+            break;
+        }
+    }
+
+    if (!numBuscado) {
+        let mTemp = termoBusca.toLowerCase().match(/(\d+)[a-zªº]*\s*(?:temporada|season|parte|part|st)|(?:temporada|season|parte|part)\s*(\d+)/i);
+        if (mTemp) numBuscado = parseInt(mTemp[1] || mTemp[2]);
+    }
+
+    if (!numBuscado && window.location.href.includes("netflix.com") && netflixTemporadaSalva > 1) { 
+        numBuscado = netflixTemporadaSalva; 
+    }
     
     if (termoBusca.includes("∬") || termoBusca.includes("∫∫")) numBuscado = 2;
 
     if (termoBusca.toLowerCase().includes("one piece")) {
         numBuscado = null;
+    }
+
+    const extrairTemporadaDeAlgarismoRomano = (titulo) => {
+        if (!titulo) return null;
+        let t = titulo.toUpperCase();
+        if (t.endsWith(" II") || t.includes(" II ") || t.includes(" II:")) return 2;
+        if (t.endsWith(" III") || t.includes(" III ") || t.includes(" III:")) return 3;
+        if (t.endsWith(" IV") || t.includes(" IV ") || t.includes(" IV:")) return 4;
+        if (t.endsWith(" V") || t.includes(" V ") || t.includes(" V:")) return 5;
+        if (t.endsWith(" VI") || t.includes(" VI ") || t.includes(" VI:")) return 6;
+        return null;
+    };
+
+    if (!numBuscado && temporadaSelecionada) {
+        numBuscado = extrairTemporadaDeAlgarismoRomano(temporadaSelecionada.title) || 
+                     extrairTemporadaDeAlgarismoRomano(termoBusca);
     }
 
     let offsetSelecionado = 0;
@@ -1523,7 +1570,7 @@ function injetarCSSDiscreto() {
     let style = document.createElement('style');
     style.id = 'mal-reviewer-css';
     style.textContent = `
-        #mal-overlay-container { position: fixed; bottom: 30px; right: 30px; width: 320px; background: linear-gradient(145deg, rgba(20, 20, 25, 0.95), rgba(30, 30, 40, 0.95)); backdrop-filter: blur(10px); border: 1px solid rgba(108, 92, 231, 0.3); border-top: 4px solid #6c5ce7; border-radius: 12px; padding: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.5), 0 0 15px rgba(108, 92, 231, 0.2); z-index: 2147483647; font-family: 'Segoe UI', sans-serif; color: white; visibility: hidden; opacity: 0; transform: translateY(40px) scale(0.95); transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); box-sizing: border-box; overflow: hidden; }
+        #mal-overlay-container { position: fixed; bottom: 30px; right: 30px; width: 320px; background: linear-gradient(145deg, rgba(20, 20, 25, 0.95), rgba(30, 30, 40, 0.95)); backdrop-filter: blur(10px); border: 1px solid rgba(108, 92, 231, 0.3); border-top: 4px solid #6c5ce7; border-radius: 12px; padding: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.5), 0 0 15px rgba(108, 92, 231, 0.2); z-index: 2147483647 !important; font-family: 'Segoe UI', sans-serif; color: white; visibility: hidden; opacity: 0; transform: translateY(40px) scale(0.95); transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); box-sizing: border-box; overflow: hidden; pointer-events: auto !important; }
         #mal-overlay-container.mostrar { visibility: visible; opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
         #mal-overlay-container.micro-mode { width: 6px; height: 80px; padding: 0; right: 0; bottom: 40px; border-radius: 8px 0 0 8px; border: none; background: #6c5ce7; cursor: pointer; pointer-events: auto; opacity: 0.6; visibility: visible; transform: none; }
         #mal-overlay-container.micro-mode:hover { opacity: 1; width: 10px; }
@@ -1542,7 +1589,7 @@ function injetarCSSDiscreto() {
         .btn-rate:hover { background: linear-gradient(135deg, #5649c0, #483a99); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4); }
         .btn-rate:active { transform: translateY(1px); box-shadow: 0 2px 10px rgba(108, 92, 231, 0.3); }
 
-        #mal-tracking-toast { position: fixed; bottom: 25px; left: 25px; width: 290px; background: rgba(20, 20, 25, 0.95); backdrop-filter: blur(8px); border-left: 4px solid #00b894; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); z-index: 2147483647; color: white; font-family: 'Segoe UI', sans-serif; opacity: 0; transform: translateX(-40px); transition: left 0.5s cubic-bezier(0.25, 1, 0.5, 1), transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), width 0.4s ease, height 0.4s ease, bottom 0.4s ease, opacity 0.4s ease, padding 0.4s ease, border-radius 0.4s ease, background 0.4s ease; pointer-events: none; overflow: hidden; box-sizing: border-box; }
+        #mal-tracking-toast { position: fixed; bottom: 25px; left: 25px; width: 290px; background: rgba(20, 20, 25, 0.95); backdrop-filter: blur(8px); border-left: 4px solid #00b894; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); z-index: 2147483647 !important; color: white; font-family: 'Segoe UI', sans-serif; opacity: 0; transform: translateX(-40px); transition: left 0.5s cubic-bezier(0.25, 1, 0.5, 1), transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), width 0.4s ease, height 0.4s ease, bottom 0.4s ease, opacity 0.4s ease, padding 0.4s ease, border-radius 0.4s ease, background 0.4s ease; pointer-events: none; overflow: hidden; box-sizing: border-box; }
         #toast-timer-bar { position: absolute; top: 0; left: 0; height: 3px; background: #a29bfe; width: 100%; transform-origin: left; transition: transform linear; }
         .toast-controls { position: absolute; top: 6px; right: 10px; display: flex; gap: 8px; }
         .toast-btn-top { background: none; border: none; color: #aaa; cursor: pointer; font-size: 14px; font-weight: bold; line-height: 1; padding: 0 4px; transition: color 0.15s; }
@@ -1550,8 +1597,8 @@ function injetarCSSDiscreto() {
         .toast-close-x { display: none; }
         .toast-collapse-btn { display: block; }
 
-        #mal-tracking-toast.mostrar { left: 25px; transform: translateX(0); opacity: 1; pointer-events: auto; padding: 12px; }
-        .season-progress-container { display: block; } .episode-progress-container { display: none; }
+        #mal-tracking-toast.mostrar { left: 25px; transform: translateX(0); opacity: 1; pointer-events: auto !important; padding: 12px; }
+        #mal-tracking-toast.hover-mode { width: 250px; padding: 12px; bottom: 25px; left: 50%; transform: translateX(-50%); border-left: 4px solid #00b894; opacity: 1; pointer-events: auto !important; height: auto; }        .season-progress-container { display: block; } .episode-progress-container { display: none; }
         #mal-tracking-toast.micro-mode { width: 120px; height: 4px; padding: 0; bottom: 20px; left: 50%; transform: translateX(-50%); border-left-width: 0; border-radius: 4px; background: rgba(0,0,0,0.5); cursor: pointer; opacity: 1; pointer-events: auto; }
         #mal-tracking-toast.micro-mode .toast-content, #mal-tracking-toast.micro-mode #toast-timer-bar { opacity: 0; pointer-events: none; visibility: hidden; }
         #mal-tracking-toast.micro-mode .micro-marker { opacity: 1 !important; }
@@ -1670,6 +1717,11 @@ function injetarCSSDiscreto() {
                 -2px  2px 0 #000,  0px  2px 0 #000,  2px  2px 0 #000,
                  2px  3px 3px rgba(0, 0, 0, 0.8) !important;
         }
+
+
+        #mal-tracking-toast *, #mal-overlay-container * {
+            pointer-events: auto !important;
+        }
     `;
     document.head.appendChild(style);
 }
@@ -1701,7 +1753,19 @@ function pauseOverlayTimerBar() {
     bar.style.transition = 'none'; bar.style.transform = window.getComputedStyle(bar).getPropertyValue('transform');
 }
 
+// Substitua o início de mostrarToastRastreio por este:
 function mostrarToastRastreio(anime, epAtual, epTotal, seasonNum) { 
+    if (window !== window.top) {
+        chrome.runtime.sendMessage({
+            action: "DELEGAR_TOAST_AO_TOPO",
+            anime: anime,
+            epAtual: epAtual,
+            epTotal: epTotal,
+            seasonNum: seasonNum
+        });
+        return;
+    }
+
     if (window.cfgEnableToastExp === false) return;
 
     let toastAntigo = document.getElementById('mal-tracking-toast');
@@ -1768,13 +1832,25 @@ function mostrarToastRastreio(anime, epAtual, epTotal, seasonNum) {
     const fixarNoContainerCerto = () => {
         let currentFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
         if (currentFs && window.cfgAllowInFullscreen !== false) {
-            currentFs.appendChild(div);
+            let targetAppend = currentFs;
+            if (targetAppend.tagName === 'VIDEO' && targetAppend.parentElement) {
+                targetAppend = targetAppend.parentElement;
+            }
+            targetAppend.appendChild(div);
+            
             if (window.cfgDiscreetProgressFs) div.classList.add('fs-discreet-prog');
             else div.classList.remove('fs-discreet-prog');
             if (window.cfgDiscreetFlashFs) div.classList.add('fs-discreet-flash-enabled');
             else div.classList.remove('fs-discreet-flash-enabled');
-        } else if (!currentFs) {
-            document.body.appendChild(div);
+        } else {
+            // 🔥 CORREÇÃO: Aplica a fixação interna no player APENAS no Google Drive. 
+            // Todos os outros sites (Netflix, Crunchyroll, etc.) continuam usando o document.body padrão.
+            if (window.location.href.includes("drive.google.com")) {
+                let playerContainer = obterPlayerContainer();
+                playerContainer.appendChild(div);
+            } else {
+                document.body.appendChild(div);
+            }
             div.classList.remove('fs-discreet-prog', 'fs-discreet-flash-enabled');
         }
     };
@@ -1909,6 +1985,14 @@ function verificarEExibirOverlay() {
 }
 
 function mostrarOverlay() {
+    if (window !== window.top) {
+        chrome.runtime.sendMessage({
+            action: "DELEGAR_OVERLAY_AO_TOPO",
+            anime: animeDetectado
+        });
+        return;
+    }
+
     if (!animeDetectado || isOverlayDismissed || window.cfgEnableOverlay === false) return; 
     if (document.getElementById('mal-overlay-container')) return; 
     
@@ -1944,11 +2028,20 @@ function mostrarOverlay() {
         let currentFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
         
         if (currentFs && window.cfgAllowInFullscreen !== false) {
-            currentFs.appendChild(div);
+            let targetAppend = currentFs;
+            if (targetAppend.tagName === 'VIDEO' && targetAppend.parentElement) {
+                targetAppend = targetAppend.parentElement;
+            }
+            targetAppend.appendChild(div);
             if (window.cfgDiscreetOverlayFs) div.classList.add('fs-discreet');
             else div.classList.remove('fs-discreet');
-        } else if (!currentFs) {
-            document.body.appendChild(div);
+        } else {
+            if (window.location.href.includes("drive.google.com")) {
+                let playerContainer = obterPlayerContainer();
+                playerContainer.appendChild(div);
+            } else {
+                document.body.appendChild(div);
+            }
             div.classList.remove('fs-discreet');
         }
     };
@@ -2080,7 +2173,7 @@ function forcarLegendasCrunchyrollNetflix() {
         let targetContainer = document.querySelector('.player-timedtext, .player-timedtext-text-container');
         if (targetContainer) {
             iniciarObservadorLegendas(targetContainer);
-            obs.disconnect(); // Desconecta o observador do body
+            obs.disconnect();
             netflixParentObserver = null;
         }
     });
@@ -2089,4 +2182,97 @@ function forcarLegendasCrunchyrollNetflix() {
         childList: true,
         subtree: true
     });
+}
+
+function obterPlayerContainer() {
+let video = window.videoSendoMonitorado || document.querySelector('video');
+if (!video) return document.body;
+
+let el = video;
+while (el && el !== document.body) {
+    if (el.tagName === 'SECTION' && el.getAttribute('aria-label') === 'Player de vídeo') {
+        return el;
+    }
+    if (el.tagName === 'DIV' && (el.classList.contains('html5-video-player') || el.classList.contains('drive-viewer-video-player'))) {
+        return el;
+    }
+    if (el.hasAttribute('data-fullscreen-control-supported')) {
+        return el;
+    }
+    el = el.parentElement;
+}
+
+return video.parentElement || document.body;
+}
+
+// Executa o flash de confirmação de conclusão de forma isolada
+function forcarFlashLocal() {
+    let toast = document.getElementById('mal-tracking-toast');
+    if (!toast) {
+        if (animeDetectado) {
+            mostrarToastRastreio(animeDetectado, episodioRelativoAtual, totalEpisodiosAnime);
+            toast = document.getElementById('mal-tracking-toast');
+        }
+    }
+    if (!toast || isToastDismissed) return;
+
+    clearTimeout(toastTimeout); 
+    toast.style.display = 'block';
+
+    let extraClasses = [];
+    let isFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+    if (isFs && window.cfgAllowInFullscreen !== false) {
+        if (window.cfgDiscreetProgressFs) extraClasses.push('fs-discreet-prog');
+        if (window.cfgDiscreetFlashFs) extraClasses.push('fs-discreet-flash-enabled');
+    }
+
+    toast.className = `mostrar flash-mode size-flash-${window.cfgSizeToastFlash || 'medium'} ${extraClasses.join(' ')}`;
+    
+    setTimeout(() => { 
+        if (isToastDismissed) return;
+        toast.className = `mostrar micro-mode size-micro-${window.cfgSizeToastMicro || 'medium'} size-exp-${window.cfgSizeToastExp || 'medium'} ${extraClasses.join(' ')}`;
+        isToastMicro = true;
+        isHoverMode = false;
+    }, 3000);
+}
+
+// Reseta o monitoramento localmente no topo sem gerar disparos em loop
+function resetarMonitoramentoLocalOnly() {
+    if (netflixSubObserver) { netflixSubObserver.disconnect(); netflixSubObserver = null; }
+    if (netflixParentObserver) { netflixParentObserver.disconnect(); netflixParentObserver = null; }
+
+    monitorando = false;
+    animeDetectado = null;
+    overlayCriado = false;
+    totalEpisodiosAnime = 0;
+    numeroEpisodioAtual = null; 
+    malProgressoSincronizado = false;
+    verificandoNota = false;  
+    termoBuscaOriginal = "";
+    isCorrecaoManual = false;
+    episodioRelativoAtual = 1;
+    netflixTituloSalvo = "";
+    netflixTemporadaSalva = null;
+    netflixEpisodioSalvo = null;
+    netflixUniqueIdSalvo = null;
+    idPlataformaAtual = null;
+    offsetManualFix = 0;
+        
+    window.ultimoEpProcessadoOTM = null;
+    window.videoSendoMonitorado = null;
+    window.lastUrlMonitorada = null;
+    window.lastEpisodioDetectado = null;
+    
+    let sondaDiv = document.getElementById('mal-reviewer-netflix-data');
+    if (sondaDiv) { sondaDiv.innerText = ""; sondaDiv.removeAttribute('data-video'); }
+    
+    const overlayAntigo = document.getElementById('mal-overlay-container');
+    if (overlayAntigo) overlayAntigo.remove();
+
+    const toastAntigo = document.getElementById('mal-tracking-toast');
+    if (toastAntigo) {
+        isToastDismissed = true; 
+        clearTimeout(toastTimeout);
+        toastAntigo.remove();
+    }
 }

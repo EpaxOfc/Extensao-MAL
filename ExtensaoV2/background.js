@@ -2,7 +2,7 @@
 const CLIENT_ID = 'bbbe6e02d9d0140e9bad74dd1116d6b6'; 
 const REDIRECT_URI = chrome.identity.getRedirectURL(); 
 
-const HABILITAR_LOGS_DESENVOLVEDOR = false;
+const HABILITAR_LOGS_DESENVOLVEDOR = true;
 
 function devLog(...args) {
     if (HABILITAR_LOGS_DESENVOLVEDOR) {
@@ -195,6 +195,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true });
         return true; 
     }
+
+    if (message.action === 'DELEGAR_TOAST_AO_TOPO') {
+        if (sender.tab && sender.tab.id) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+                action: "RENDERIZAR_TOAST_DELEGADO",
+                anime: message.anime,
+                epAtual: message.epAtual,
+                epTotal: message.epTotal,
+                seasonNum: message.seasonNum
+            }, { frameId: 0 });
+        }
+        return;
+    }
+    if (message.action === 'DELEGAR_OVERLAY_AO_TOPO') {
+        if (sender.tab && sender.tab.id) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+                action: "RENDERIZAR_OVERLAY_DELEGADO",
+                anime: message.anime
+            }, { frameId: 0 });
+        }
+        return;
+    }
+    if (message.action === 'ATUALIZAR_PROGRESSO_TOAST') {
+        if (sender.tab && sender.tab.id) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+                action: "ATUALIZAR_PROGRESSO_DELEGADO",
+                pct: message.pct
+            }, { frameId: 0 });
+        }
+        return;
+    }
+    if (message.action === 'REDEFINIR_TOAST_AO_TOPO') {
+        if (sender.tab && sender.tab.id) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+                action: "REDEFINIR_TOAST_DELEGADO"
+            }, { frameId: 0 });
+        }
+        return;
+    }
+    if (message.action === 'FLASH_TOAST_AO_TOPO') {
+        if (sender.tab && sender.tab.id) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+                action: "FLASH_TOAST_DELEGADO"
+            }, { frameId: 0 });
+        }
+        return;
+    }
 });
 
 async function iniciarLogin(sendResponse) {
@@ -228,7 +275,7 @@ async function iniciarLogin(sendResponse) {
         if (code) {
             const storage = await chrome.storage.local.get(['temp_verifier', 'temp_state']);
             
-            // Valida se o 'state' que retornou da API é o mesmo que geramos inicialmente
+            // Valida se o 'state' que retornou da API é o mesmo que gerou inicialmente
             if (!stateRetornado || stateRetornado !== storage.temp_state) {
                 console.error("MAL Reviewer: Tentativa de login rejeitada. O parâmetro 'state' de validação é inválido ou ausente.");
                 sendResponse({ success: false, error: 'Erro de validação (Sessão inválida ou potencial CSRF).' });
@@ -238,7 +285,7 @@ async function iniciarLogin(sendResponse) {
 
             const tokenData = await trocarCodePorToken(code, storage.temp_verifier);
             
-            // Limpa as variáveis temporárias do Storage para higiene de dados
+            // Limpa as variáveis temporárias do Storage
             chrome.storage.local.remove(['temp_verifier', 'temp_state']);
             
             if (tokenData && tokenData.access_token) {
