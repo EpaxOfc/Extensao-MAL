@@ -8,10 +8,42 @@
 <body>
     <div class="container">
         <header>
-            <h1>📊 Minhas Avaliações Técnicas</h1>
-            <div class="search-bar">
-                <input type="text" id="filtroNome" placeholder="Pesquisar na minha lista...">
-                <select id="ordenarPor">
+            <div class="header-top">
+                <h1>📊 Minhas Avaliações Técnicas</h1>
+                <button id="btnToggle3D" class="btn-3d">
+                    <span style="font-size: 16px;">✨</span> Modo 3D: <b id="status3D">OFF</b>
+                </button>
+            </div>
+            
+            <!-- Painel de Controles Moderno -->
+            <div class="controls-panel">
+                <div class="search-input-container">
+                    <span>🔍</span>
+                    <input type="text" id="filtroNome" placeholder="Pesquisar anime...">
+                </div>
+
+                <!-- DROPDOWN CUSTOMIZADO DE MULTIPLO STATUS -->
+                <div class="custom-dropdown-container">
+                    <button id="btnDropdownStatus" class="dropdown-btn">
+                        Status <span id="badgeStatusCount" class="badge">Todos</span> <span class="arrow">▾</span>
+                    </button>
+                    <div id="listaDropdownStatus" class="dropdown-content">
+                        <label><input type="checkbox" class="cb-status" value="completed" checked> Completados</label>
+                        <label><input type="checkbox" class="cb-status" value="watching" checked> Assistindo</label>
+                        <label><input type="checkbox" class="cb-status" value="plan_to_watch" checked> Planeja Assistir</label>
+                        <label><input type="checkbox" class="cb-status" value="on_hold" checked> Em Espera</label>
+                        <label><input type="checkbox" class="cb-status" value="dropped" checked> Droppados</label>
+                    </div>
+                </div>
+
+                <select id="filtroNotas" class="modern-select">
+                    <option value="todos">Todas as Notas</option>
+                    <option value="sem_oficial">Sem Nota Oficial (MAL)</option>
+                    <option value="sem_tecnica">Sem Nota Técnica</option>
+                    <option value="sem_nota">Sem Nota Nenhuma</option>
+                </select>
+
+                <select id="ordenarPor" class="modern-select">
                     <option value="recente">Mais Recentes</option>
                     <option value="nota">Sua Nota (MAL)</option>
                     <option value="media_tecnica">Média Técnica (Extensão)</option>

@@ -1,5 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
+/* ==========================================================
+   01. VARIÁVEIS E CONFIGURAÇÕES GLOBAIS
+   ========================================================== */
 :root {
     --bg: #121214;
     --card-bg: #202024;
@@ -12,7 +15,9 @@
     --gold: #fba94c;
 }
 
-* { box-sizing: border-box; }
+* { 
+    box-sizing: border-box; 
+}
 
 body {
     background-color: var(--bg);
@@ -22,20 +27,12 @@ body {
     padding: 20px;
 }
 
-.container { max-width: 1100px; margin: auto; }
-
-/* HEADER */
-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border);
+.container { 
+    max-width: 1100px; 
+    margin: auto; 
 }
 
-.search-bar { display: flex; gap: 10px; }
-
+/* Fallback global para inputs caso não tenham classe específica */
 input, select {
     background: var(--card-bg);
     border: 1px solid var(--border);
@@ -45,7 +42,163 @@ input, select {
     outline: none;
 }
 
-/* CARDS */
+
+/* ==========================================================
+   02. CABEÇALHO (HEADER) E PAINEL DE CONTROLES (FILTROS)
+   ========================================================== */
+header {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.header-top { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 20px; 
+}
+
+.header-top h1 { 
+    margin: 0; 
+}
+
+.controls-panel {
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 12px;
+    background: var(--card-bg); 
+    padding: 15px; 
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.search-input-container {
+    flex: 1; 
+    min-width: 200px;
+    display: flex; 
+    align-items: center;
+    background: #121214; 
+    border: 1px solid var(--border);
+    border-radius: 6px; 
+    padding: 0 10px;
+}
+
+.search-input-container input {
+    width: 100%; 
+    background: transparent; 
+    border: none; 
+    color: white;
+    padding: 10px 5px; 
+    outline: none; 
+    font-size: 14px;
+}
+
+.modern-select, .dropdown-btn {
+    background: #121214; 
+    border: 1px solid var(--border); 
+    color: white;
+    padding: 10px 15px; 
+    border-radius: 6px; 
+    outline: none; 
+    font-size: 13px;
+    cursor: pointer; 
+    transition: 0.2s;
+}
+
+.modern-select:hover, .dropdown-btn:hover { 
+    border-color: var(--accent); 
+}
+
+/* Botão do Modo 3D */
+.btn-3d {
+    background: #2d3436; 
+    color: #fff; 
+    border: 1px solid #555; 
+    padding: 8px 15px; 
+    border-radius: 6px; 
+    cursor: pointer; 
+    font-size: 13px; 
+    transition: 0.3s; 
+    display: flex; 
+    align-items: center; 
+    gap: 6px;
+}
+
+#btnToggle3D.active {
+    background: linear-gradient(135deg, #6c5ce7, #5649c0) !important;
+    border-color: #a29bfe !important;
+    box-shadow: 0 0 10px rgba(108, 92, 231, 0.4) !important;
+}
+
+/* Dropdown Customizado de Múltipla Escolha (Status) */
+.custom-dropdown-container { 
+    position: relative; 
+}
+
+.dropdown-btn {
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    justify-content: space-between;
+    min-width: 160px;
+}
+
+.dropdown-btn .badge {
+    background: var(--accent); 
+    color: white; 
+    padding: 2px 6px; 
+    border-radius: 4px; 
+    font-size: 11px; 
+    font-weight: bold;
+}
+
+.dropdown-content {
+    display: none; 
+    position: absolute; 
+    top: 110%; 
+    left: 0;
+    background: var(--card-bg); 
+    min-width: 200px; 
+    border-radius: 8px;
+    border: 1px solid var(--border); 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    z-index: 100; 
+    flex-direction: column; 
+    padding: 8px 0;
+}
+
+.dropdown-content.show { 
+    display: flex; 
+    animation: slideDown 0.2s ease; 
+}
+
+.dropdown-content label {
+    padding: 8px 15px; 
+    display: flex; 
+    align-items: center; 
+    gap: 10px;
+    font-size: 13px; 
+    cursor: pointer; 
+    transition: background 0.2s;
+}
+
+.dropdown-content label:hover { 
+    background: #29292e; 
+}
+
+.cb-status {
+    accent-color: var(--accent); 
+    width: 16px; 
+    height: 16px; 
+    cursor: pointer;
+}
+
+
+/* ==========================================================
+   03. GRID E CARDS DE ANIMES
+   ========================================================== */
 .anime-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -59,48 +212,117 @@ input, select {
     border: 1px solid var(--border);
     cursor: pointer;
     transition: transform 0.2s;
-    display: flex; flex-direction: column;
+    display: flex; 
+    flex-direction: column;
+    /* Prepara para o efeito 3D */
+    will-change: transform, box-shadow;
+    transform-style: preserve-3d;
 }
 
-.anime-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+.anime-card:hover { 
+    transform: translateY(-4px); 
+    border-color: var(--accent); 
+}
 
-.card-capa { width: 100%; height: 300px; object-fit: cover; }
+.card-capa { 
+    width: 100%; 
+    height: 300px; 
+    object-fit: cover; 
+}
 
-.card-body { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-.card-body h3 { margin: 0 0 8px 0; font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-body { 
+    padding: 12px; 
+    flex-grow: 1; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: space-between; 
+}
+
+.card-body h3 { 
+    margin: 0 0 8px 0; 
+    font-size: 15px; 
+    display: -webkit-box; 
+    -webkit-line-clamp: 2; 
+    -webkit-box-orient: vertical; 
+    overflow: hidden; 
+}
 
 .card-footer {
     background: #29292e;
     padding: 10px 12px;
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
     border-top: 1px solid var(--border);
 }
 
-.nota-media { font-size: 18px; font-weight: bold; color: var(--gold); }
-.tech-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
+.nota-media { 
+    font-size: 18px; 
+    font-weight: bold; 
+    color: var(--gold); 
+}
 
-/* --- MODAL (A CORREÇÃO ESTÁ AQUI) --- */
+.tech-label { 
+    font-size: 9px; 
+    color: var(--text-muted); 
+    text-transform: uppercase; 
+}
+
+/* Badges e Infos de Notas (MAL e Usuário) no Card */
+.info-mal {
+    display: flex;
+    gap: 10px;
+    margin-top: auto; 
+}
+
+.info-badge {
+    background: #29292e; 
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    transition: border-color 0.2s;
+}
+
+.info-badge:hover { border-color: #444; }
+.info-badge .emoji { font-size: 12px; }
+.info-badge .label { color: var(--text-muted); text-transform: uppercase; font-weight: 600; font-size: 9px; }
+.info-badge .valor { color: white; font-weight: bold; font-size: 13px; }
+.info-badge.destaque { border-left: 2px solid var(--accent); }
+.info-badge.destaque .valor { color: var(--accent-hover); }
+
+
+/* ==========================================================
+   04. ESTRUTURA GERAL DO MODAL (POPUP DE DETALHES)
+   ========================================================== */
 .modal {
     display: none;
     position: fixed;
     z-index: 1000;
-    left: 0; top: 0; width: 100%; height: 100%;
+    left: 0; 
+    top: 0; 
+    width: 100%; 
+    height: 100%;
     background-color: rgba(0,0,0,0.85);
     backdrop-filter: blur(5px);
-    justify-content: center; align-items: center;
+    justify-content: center; 
+    align-items: center;
 }
 
 .modal-content {
     background: var(--modal-bg);
-    width: 90%; max-width: 900px;
-    height: 600px; /* Altura fixa */
+    width: 90%; 
+    max-width: 900px;
+    height: 600px; 
     border-radius: 12px;
     border: 1px solid var(--border);
-    position: relative; /* Para o botão fechar */
+    position: relative; 
     overflow: hidden;
 }
 
-/* O container interno gerado pelo JS agora é quem manda no layout */
 #detalhesConteudo {
     display: flex;
     width: 100%;
@@ -115,30 +337,37 @@ input, select {
 }
 
 .modal-img {
-    width: 100%; height: 100%; object-fit: cover; opacity: 0.9;
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+    opacity: 0.9;
 }
 
 .modal-info {
     flex-grow: 1;
     padding: 30px;
-    overflow-y: auto; /* Scroll se o conteúdo for grande */
+    overflow-y: auto; 
     display: flex; 
     flex-direction: column;
 }
 
-/* Scrollbar Customizada */
+/* Scrollbar Customizada da janela modal */
 .modal-info::-webkit-scrollbar { width: 8px; }
 .modal-info::-webkit-scrollbar-track { background: var(--modal-bg); }
 .modal-info::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
 
 .close {
     position: absolute;
-    right: 20px; top: 15px;
-    color: white; font-size: 30px; cursor: pointer;
+    right: 20px; 
+    top: 15px;
+    color: white; 
+    font-size: 30px; 
+    cursor: pointer;
     z-index: 10;
     line-height: 1;
     background: rgba(0,0,0,0.5);
-    width: 40px; height: 40px;
+    width: 40px; 
+    height: 40px;
     text-align: center;
     border-radius: 50%;
 }
@@ -146,13 +375,15 @@ input, select {
 .modal-header h2 { margin: 0; font-size: 24px; color: white; margin-right: 40px; }
 .sub-header { color: var(--text-muted); font-size: 14px; margin-top: 5px; margin-bottom: 25px; }
 
-/* Status Box */
-/* --- AREA DE STATUS (TOPO MODAL) --- */
+
+/* ==========================================================
+   05. ÁREA DE STATUS (CAIXAS DE NOTAS NO TOPO DO MODAL)
+   ========================================================== */
 .stats-row { 
     display: flex; 
     gap: 15px; 
     margin-bottom: 30px; 
-    background: transparent; /* Removemos o fundo único */
+    background: transparent; 
     border: none;
     padding: 0;
 }
@@ -161,7 +392,7 @@ input, select {
     flex: 1; 
     text-align: center; 
     padding: 15px 10px; 
-    background: #202024; /* Fundo individual */
+    background: #202024; 
     border: 1px solid var(--border);
     border-radius: 12px;
     position: relative;
@@ -169,7 +400,10 @@ input, select {
     transition: transform 0.2s;
 }
 
-.stat-box:hover { transform: translateY(-2px); border-color: #444; }
+.stat-box:hover { 
+    transform: translateY(-2px); 
+    border-color: #444; 
+}
 
 .stat-box span { 
     display: block; 
@@ -188,9 +422,8 @@ input, select {
     line-height: 1;
 }
 
-/* Destaque para a Média Técnica */
 .stat-box.highlight { 
-    background: rgba(251, 169, 76, 0.08); /* Fundo dourado bem suave */
+    background: rgba(251, 169, 76, 0.08); 
     border-color: rgba(251, 169, 76, 0.3);
 }
 
@@ -199,10 +432,11 @@ input, select {
     text-shadow: 0 0 15px rgba(251, 169, 76, 0.3);
 }
 
-/* --- MODO VISUALIZAÇÃO (Grid de Detalhes) --- */
+
+/* 06. MODO DE VISUALIZAÇÃO */
 .view-mode-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Duas colunas */
+    grid-template-columns: 1fr 1fr;
     gap: 12px;
 }
 
@@ -214,11 +448,13 @@ input, select {
     padding: 12px 16px;
     border-radius: 8px;
     border: 1px solid transparent;
-    border-left: 3px solid var(--accent); /* Barrinha colorida na esquerda */
+    border-left: 3px solid var(--accent); 
     transition: background 0.2s;
 }
 
-.view-item:hover { background: #2e2e36; }
+.view-item:hover { 
+    background: #2e2e36; 
+}
 
 .view-item span:first-child { 
     color: #ccc; 
@@ -235,7 +471,148 @@ input, select {
     border-radius: 4px;
 }
 
-/* --- BOTÕES (Design Moderno) --- */
+
+/* ==========================================================
+   07. MODO DE EDIÇÃO (EDIT MODE - MODAL)
+   ========================================================== */
+.edit-mode-container { 
+    display: none; 
+}
+
+#destaqueNotaMal {
+    background: linear-gradient(135deg, rgba(130, 87, 229, 0.15) 0%, rgba(130, 87, 229, 0.05) 100%);
+    border: 1px solid var(--accent);
+    padding: 10px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+#destaqueNotaMal label {
+    color: var(--accent-hover);
+    font-weight: 800;
+    font-size: 12px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#destaqueNotaMal select {
+    font-size: 16px; 
+    font-weight: 800;
+    text-align: center;
+    height: 55px;
+    width: 90px; 
+    margin: auto;
+    border: 2px solid var(--accent);
+    background: #121214;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* Área de Inputs Técnicos */
+#listaInputsTecnicos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.edit-row label { 
+    display: block; 
+    font-size: 12px; 
+    color: var(--text-muted); 
+    margin-bottom: 6px; 
+    margin-left: 2px;
+}
+
+.input-group {
+    display: flex;
+    gap: 8px; 
+    align-items: center;
+}
+
+.input-group .nota-select-modal {
+    flex: 1;
+}
+
+.nota-select-modal { 
+    width: 100%; 
+    background: #18181b; 
+    border: 1px solid #333; 
+    color: white; 
+    padding: 0 12px;
+    height: 40px; 
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.nota-select-modal:focus { 
+    border-color: var(--accent); 
+}
+
+/* Adição de Novos Critérios */
+.edit-row-add { 
+    display: flex; 
+    gap: 10px; 
+    margin-top: 20px; 
+    padding-top: 15px; 
+    border-top: 1px solid var(--border); 
+}
+
+.edit-row-add input { 
+    flex: 1; 
+    background: #121214; 
+    border: 1px solid #333; 
+    padding: 10px; 
+    border-radius: 6px; 
+    color: white; 
+}
+
+#btnAddCriterio {
+    background: #333; 
+    color: white; 
+    border: none; 
+    width: 42px; 
+    border-radius: 6px; 
+    font-size: 20px; 
+    cursor: pointer; 
+    transition: 0.2s;
+}
+
+#btnAddCriterio:hover { 
+    background: var(--accent); 
+}
+
+.btn-delete-crit {
+    background: rgba(231, 76, 60, 0.15);
+    color: #ff6b6b;
+    border: 1px solid #ff6b6b;
+    width: 40px;   
+    height: 40px;     
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 22px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    padding-bottom: 4px;
+}
+
+.btn-delete-crit:hover {
+    background: #ff6b6b;
+    color: white;
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.4);
+}
+
+
+/* ==========================================================
+   08. BOTÕES GERAIS E ANIMAÇÕES
+   ========================================================== */
 .action-bar { 
     margin-top: 25px; 
     display: flex; 
@@ -253,7 +630,9 @@ input, select {
     cursor: pointer; 
     font-size: 14px;
     transition: all 0.2s ease;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
 }
 
 .btn-primary:hover { 
@@ -280,157 +659,7 @@ input, select {
     background: rgba(255, 255, 255, 0.05);
 }
 
-/* --- MODO EDIÇÃO --- */
-.edit-mode-container { display: none; }
-
-/* DESTAQUE DA NOTA OFICIAL (Agora usando ID específico) */
-#destaqueNotaMal {
-    background: linear-gradient(135deg, rgba(130, 87, 229, 0.15) 0%, rgba(130, 87, 229, 0.05) 100%);
-    border: 1px solid var(--accent);
-    padding: 10px;
-    border-radius: 12px;
-    margin-bottom: 25px;
-    text-align: center;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
-
-#destaqueNotaMal label {
-    color: var(--accent-hover);
-    font-weight: 800;
-    font-size: 12px;
-    margin-bottom: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-#destaqueNotaMal select {
-    font-size: 16px; /* Nota bem grande */
-    font-weight: 800;
-    text-align: center;
-    height: 55px;
-    width: 90px; /* Largura fixa para ficar elegante */
-    margin: auto;
-    border: 2px solid var(--accent);
-    background: #121214;
-    color: white;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-/* Grid para os Inputs Técnicos */
-#listaInputsTecnicos {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-}
-
-/* Inputs técnicos normais */
-.edit-row label { 
-    display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; margin-left: 2px;
-}
-
-.nota-select-modal { 
-    width: 100%; 
-    background: #18181b; 
-    border: 1px solid #333; 
-    color: white; 
-    padding: 0 12px;
-    height: 40px; 
-    border-radius: 6px;
-    cursor: pointer;
-    transition: border-color 0.2s;
-}
-
-.nota-select-modal:focus { border-color: var(--accent); }
-
-.edit-row-add { display: flex; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border); }
-.edit-row-add input { flex: 1; background: #121214; border: 1px solid #333; padding: 10px; border-radius: 6px; color: white; }
-
-#btnAddCriterio {
-    background: #333; color: white; border: none; width: 42px; border-radius: 6px; 
-    font-size: 20px; cursor: pointer; transition: 0.2s;
-}
-#btnAddCriterio:hover { background: var(--accent); }
-
-/* --- BOTÃO DE DELETAR CRITÉRIO --- */
-
-.input-group {
-    display: flex;
-    gap: 8px; 
-    align-items: center;
-}
-
-.input-group .nota-select-modal {
-    flex: 1;
-}
-
-.btn-delete-crit {
-    background: rgba(231, 76, 60, 0.15);
-    color: #ff6b6b;
-    border: 1px solid #ff6b6b;
-    width: 40px;   
-    height: 40px;     
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 22px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    padding-bottom: 4px;
-}
-
-.btn-delete-crit:hover {
-    background: #ff6b6b;
-    color: white;
-    box-shadow: 0 0 10px rgba(255, 107, 107, 0.4);
-}
-
-.info-mal {
-    display: flex;
-    gap: 10px;
-    margin-top: auto; 
-}
-
-.info-badge {
-    background: #29292e; 
-    border: 1px solid var(--border);
-    padding: 6px 10px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    transition: border-color 0.2s;
-}
-
-.info-badge:hover {
-    border-color: #444;
-}
-
-.info-badge .emoji {
-    font-size: 12px;
-}
-
-.info-badge .label {
-    color: var(--text-muted);
-    text-transform: uppercase;
-    font-weight: 600;
-    font-size: 9px;
-}
-
-.info-badge .valor {
-    color: white;
-    font-weight: bold;
-    font-size: 13px;
-}
-
-.info-badge.destaque {
-    border-left: 2px solid var(--accent);
-}
-
-.info-badge.destaque .valor {
-    color: var(--accent-hover);
-}
-

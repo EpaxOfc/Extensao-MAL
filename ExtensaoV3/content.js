@@ -50,13 +50,14 @@ let cfgAutoOpenOverlayIfNoScore = true;
 let cfgEnablePrimeBasic = false;
 let cfgEnablePrimeAdvanced = false;
 
-const HABILITAR_LOGS_DESENVOLVEDOR = true;
+const HABILITAR_LOGS_DESENVOLVEDOR = false;
 
 function devLog(...args) {
     if (HABILITAR_LOGS_DESENVOLVEDOR) {
         console.log(...args);
     }
 }
+const devlog = devLog;
 
 if (window === window.top) {
     window.addEventListener("message", async (event) => {
@@ -64,7 +65,12 @@ if (window === window.top) {
             let nome = await detectarNomeAnime();
             let ep = detectarEpisodioAtual();
             if (event.source) {
-                event.source.postMessage({ action: "MAL_RESPONSE_INFO", nome: nome, ep: ep }, event.origin);
+                event.source.postMessage({ 
+                    action: "MAL_RESPONSE_INFO", 
+                    nome: nome, 
+                    ep: ep,
+                    isMovie: window.isMovieFromTitle 
+                }, event.origin);
             }
         }
     });
@@ -494,8 +500,14 @@ const intervaloCheck = setInterval(() => {
     }
 
     if (videoValido) {
-        chrome.storage.local.get(['customUrls'], (res) => {
-            const urlsPermitidas = ["netflix.com", "crunchyroll.com", "primevideo.com", "amazon.", "youtube.com/embed", "youtube-nocookie.com/embed", "animefire.io", "animesonlinecc.to", "meusanimes.blog", "goyabu.io", "betteranime.io", "drive.google.com"];
+        chrome.storage.local.get(['customUrls', 'enableGoogleDrive'], (res) => {
+            const urlsPermitidas = [
+                "netflix.com", "crunchyroll.com", "primevideo.com", "amazon.", 
+                "youtube.com/embed", "youtube-nocookie.com/embed", 
+                "animefire.io", "animesonlinecc.to", "meusanimes.blog", 
+                "goyabu.io", "betteranime.io", "youtube.googleapis.com/embed"
+            ];
+            
             let driveAtivo = res.enableGoogleDrive ?? false;
             if (driveAtivo) {
                 urlsPermitidas.push("drive.google.com");
@@ -504,22 +516,25 @@ const intervaloCheck = setInterval(() => {
             const sitesCustomizados = res.customUrls || [];
             urlsPermitidas.push(...sitesCustomizados);
 
+            // Criamos um objeto de URL APENAS para a validação de segurança.
+            // A sua variável "url" antiga continua intacta para o resto do script!
             const urlObj = new URL(window.location.href);
             const hostname = urlObj.hostname;
             const pathname = urlObj.pathname;
 
             const siteEhMonitorado = urlsPermitidas.some(site => {
+                // Trata sites que têm barra (Ex: "youtube.com/embed")
                 if (site.includes('/')) {
                     const partes = site.split('/');
                     const dominio = partes[0];
                     const caminho = partes.slice(1).join('/');
                     return (hostname === dominio || hostname.endsWith('.' + dominio)) && pathname.includes(caminho);
                 }
-                
+                // Trata o Amazon (Pega amazon.com, amazon.com.br, etc)
                 if (site === "amazon.") {
                     return hostname.includes("amazon.");
                 }
-                
+                // Trata domínios padrões (Netflix, Crunchyroll, etc)
                 return hostname === site || hostname.endsWith('.' + site);
             });
 
@@ -948,23 +963,49 @@ function detectarEpisodioAtual() {
 
 async function detectarNomeAnime() {
     let url = window.location.href;
+    const placeholdersGlobais = ["youtube", "google drive", "player de video do blogger", "blogger", "player de video", "video player", "reprodutor de video"];
 
     if (window !== window.top) {
         let infoTop = await solicitarInfoDaPaginaPrincipal();
         if (infoTop && infoTop.nome) {
+            // 🔥 CORREÇÃO: Se o frame de cima retornar um placeholder temporário de carregamento, descarta
+            if (placeholdersGlobais.includes(infoTop.nome.toLowerCase().trim())) {
+                return null;
+            }
+            
             idPlataformaAtual = "GENERIC_IFRAME";
             window.epAbsDoIframe = infoTop.ep;
+            window.isMovieFromTitle = infoTop.isMovie || false;
+
             return infoTop.nome;
         }
     }
 
     // EXTRAÇÃO DE NOME PARA GOOGLE DRIVE
     if (url.includes("drive.google.com")) {
-        if (!cfgEnableGoogleDrive) return null;
-        let spanTitle = document.querySelector('span[data-is-tooltip-wrapper="true"] span');
-        if (spanTitle && spanTitle.textContent) {
-            let rawName = spanTitle.textContent.trim();
-            
+        if (!cfgEnableGoogleDrive) {
+            devLog("MAL Reviewer: 🛑 Drive detectado, mas opção está desativada no popup.");
+            return null;
+        }
+        
+        let rawName = "";
+        let tabTitle = document.title || "";
+        
+        if (tabTitle && !tabTitle.toLowerCase().match(/^(google drive|google drive -|compartilhado|drive|youtube)$/)) {
+            rawName = tabTitle;
+        } else {
+            let spanTitle = document.querySelector('span[data-is-tooltip-wrapper="true"] span');
+            if (spanTitle && spanTitle.textContent) {
+                let text = spanTitle.textContent.trim();
+                const invalidos = ["youtube", "reproduzir", "pausar", "volume", "configura", "tela cheia", "velocidade"];
+                if (!invalidos.some(term => text.toLowerCase().includes(term))) {
+                    rawName = text;
+                }
+            }
+        }
+        
+        if (rawName) {
+            rawName = rawName.replace(/ - Google Drive/i, '');
             rawName = rawName.replace(/\.(mp4|mkv|avi|mov|wmv|flv|webm)$/i, '');
             
             let cleanedName = rawName
@@ -974,8 +1015,21 @@ async function detectarNomeAnime() {
                 .replace(/\s{2,}/g, ' ')
                 .trim();
 
+            if (/\b(?:Movie|Filme)\b/i.test(cleanedName)) {
+                window.isMovieFromTitle = true;
+                cleanedName = cleanedName.replace(/\b(?:Movie|Filme)\b/ig, "").replace(/\s{2,}/g, ' ').trim();
+            } else {
+                window.isMovieFromTitle = false;
+            }
+
+            const placeholders = ["youtube", "google drive", "player de video do blogger", "blogger", "player de video", "video player", "reprodutor de video"];
+            if (placeholders.includes(cleanedName.toLowerCase().trim())) {
+                devLog(`MAL Reviewer: ⚠️ Descartando nome temporário detectado no Drive: "${cleanedName}". Tentando novamente.`);
+                return null;
+            }
+
             idPlataformaAtual = "DRIVE_" + btoa(encodeURIComponent(cleanedName)).substring(0, 15);
-            devLog(`MAL Reviewer: 📂 [GOOGLE DRIVE] Nome extraído do span: "${cleanedName}"`);
+            devLog(`MAL Reviewer: 📂 [GOOGLE DRIVE] Nome extraído: "${cleanedName}"`);
             return cleanedName;
         }
     }
@@ -1116,6 +1170,7 @@ async function detectarNomeAnime() {
 
     let nomeLimpo = titleRaw;
 
+    nomeLimpo = nomeLimpo.replace(/ - YouTube$/i, "");
     nomeLimpo = nomeLimpo.replace(/\s*[-|]?\s*(?:Epis[óo]dio|Episode|Ep\.|Ep)\s*\d+.*$/i, "");
 
     if (/\b(?:Movie|Filme)\b/i.test(nomeLimpo)) {
@@ -1158,6 +1213,12 @@ async function detectarNomeAnime() {
 
     idPlataformaAtual = "GENERIC_" + btoa(encodeURIComponent(nomeLimpo)).substring(0, 15);
     devLog(`MAL Reviewer: 🌐 [EXTRATOR GENÉRICO] Nome extraído e limpo: "${nomeLimpo}"`);
+
+    // 🔥 CORREÇÃO: Descarta se o extrator genérico também capturar placeholders no topo
+    if (placeholdersGlobais.includes(nomeLimpo.toLowerCase().trim())) {
+        return null;
+    }
+
     return nomeLimpo;
 }
 
@@ -1300,9 +1361,10 @@ function extrairMetadadosNetflix() {
 // BUSCA E MATEMÁTICA ANILIST
 function buscarDadosNoJikan(termo) {
     if(!termo) return;
+    devLog(`%cMAL Reviewer: 🚀 Disparando busca na API por: "${termo}"`, "color: #00b894; font-weight: bold;");
     
     let epAbsVal = detectarEpisodioAtual();
-    let isOvaOrMovie = termo.toLowerCase().includes("ova") || termo.toLowerCase().includes("movie") || window.isMovieFromTitle;
+    let isOvaOrMovie = termo.toLowerCase().includes("ova") || termo.toLowerCase().includes("movie") || termo.toLowerCase().includes("filme") || window.isMovieFromTitle;
     let ehFilme = epAbsVal === null || isOvaOrMovie; 
 
     chrome.runtime.sendMessage({ 
@@ -1861,9 +1923,7 @@ function mostrarToastRastreio(anime, epAtual, epTotal, seasonNum) {
             if (window.cfgDiscreetFlashFs) div.classList.add('fs-discreet-flash-enabled');
             else div.classList.remove('fs-discreet-flash-enabled');
         } else {
-            // 🔥 CORREÇÃO: Aplica a fixação interna no player APENAS no Google Drive. 
-            // Todos os outros sites (Netflix, Crunchyroll, etc.) continuam usando o document.body padrão.
-            if (window.location.href.includes("drive.google.com")) {
+             if (window.location.href.includes("drive.google.com") || window.location.href.includes("youtube.com/embed")) {
                 let playerContainer = obterPlayerContainer();
                 playerContainer.appendChild(div);
             } else {
@@ -2054,13 +2114,13 @@ function mostrarOverlay() {
             if (window.cfgDiscreetOverlayFs) div.classList.add('fs-discreet');
             else div.classList.remove('fs-discreet');
         } else {
-            if (window.location.href.includes("drive.google.com")) {
+             if (window.location.href.includes("drive.google.com") || window.location.href.includes("youtube.com/embed")) {
                 let playerContainer = obterPlayerContainer();
                 playerContainer.appendChild(div);
             } else {
                 document.body.appendChild(div);
             }
-            div.classList.remove('fs-discreet');
+            div.classList.remove('fs-discreet-prog', 'fs-discreet-flash-enabled');
         }
     };
 

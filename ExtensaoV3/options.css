@@ -1,10 +1,5 @@
-/* =========================================
-   ESTILOS GERAIS DA PÁGINA DE OPÇÕES
-   ========================================= */
-body { 
-    background: #1a1a1d; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-    padding: 20px; max-width: 650px; margin: auto; padding-bottom: 100px; 
-}
+/* Estilos e Fundo */
+body { background: #1a1a1d; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 650px; margin: auto; padding-bottom: 100px; }
 h2 { color: #6c5ce7; border-bottom: 1px solid #444; padding-bottom: 8px; font-size: 18px; margin-top: 30px;}
 h3 { font-size: 15px; margin-top: 0; margin-bottom: 8px; color: #e0e0e0; }
 .section { background: #242429; padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; }
@@ -13,131 +8,83 @@ h3 { font-size: 15px; margin-top: 0; margin-bottom: 8px; color: #e0e0e0; }
 .logged-out { color: #ff7675; }
 .warning-text { font-size: 11px; color: #ff7675; margin-bottom: 10px; line-height: 1.4; display: block; }
 
+/* Animações e Focos Visuais (Botões e Inputs) */
+button { transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
+button:hover:not(.sim-fs-btn):not(#btnCloseFloat):not(#sim-edit-close):not(.toggle) { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+button:active:not(.sim-fs-btn):not(#btnCloseFloat):not(#sim-edit-close):not(.toggle) { transform: translateY(0) scale(0.97); box-shadow: none; }
+input:focus, select:focus { border-color: #6c5ce7; box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.3); outline: none; }
+
 /* Botões Iniciais */
 #btnLogin { background: #2e51a2; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; }
-#btnVerBibliotecaOptions { width: 100%; background: #202024; color: white; border: 1px solid #444; padding: 8px; cursor: pointer; border-radius: 6px; font-size: 13px; font-weight: bold; transition: all 0.2s ease; margin-top: 5px; }
-#btnVerBibliotecaOptions:hover { background: #3a3a42; border-color: #6c5ce7; transform: translateY(-1px); }
+#btnVerBibliotecaOptions { width: 100%; background: #202024; color: white; border: 1px solid #444; padding: 8px; cursor: pointer; border-radius: 6px; font-size: 13px; font-weight: bold; margin-top: 5px; }
 
-/* =========================================
-   DESIGN COMPACTO DOS CARDS E TOGGLES
-   ========================================= */
-.setting-card {
-    background: #242429; border: 1px solid #383840; border-radius: 6px;
-    padding: 8px 12px; margin-bottom: 8px; display: flex;
-    justify-content: space-between; align-items: center;
-    transition: border-color 0.2s, background 0.2s;
-}
-.setting-card:hover { border-color: #6c5ce7; background: #28282e; }
+/* Cards (Efeito Deslize Lateral Hover) */
+.setting-card { background: #242429; border: 1px solid #383840; border-radius: 6px; padding: 8px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; transition: all 0.25s ease; border-left: 3px solid transparent; }
+.setting-card:hover { border-left-color: #6c5ce7; background: #2a2a30; transform: translateX(4px); box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
 .setting-info { display: flex; align-items: center; max-width: 85%; }
-.setting-title { font-weight: 600; font-size: 13px; color: #eee; display: flex; align-items: center; }
+.setting-title { font-weight: 600; font-size: 13px; color: #eee; display: flex; align-items: center; gap: 6px; }
 
-/* O Interruptor Compacto (Toggle) */
+/* Interruptores (Toggles) */
 .toggle { position: relative; display: inline-block; width: 34px; height: 18px; flex-shrink: 0; }
 .toggle input { opacity: 0; width: 0; height: 0; }
 .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; border-radius: 18px; transition: .3s; border: 1px solid #555; }
 .slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 2px; bottom: 2px; background-color: #aaa; border-radius: 50%; transition: .3s; }
-.toggle input:checked + .slider { background-color: #6c5ce7; border-color: #6c5ce7; }
+.toggle input:checked + .slider { background-color: #6c5ce7; border-color: #6c5ce7; box-shadow: 0 0 8px rgba(108, 92, 231, 0.4); }
 .toggle input:checked + .slider:before { transform: translateX(16px); background-color: #fff; }
 .toggle input:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
 
-/* Sub-opções */
-.nested-settings-box {
-    background: #1c1c1f; border: 1px solid #383840; border-top: none;
-    border-left: 3px solid #6c5ce7; border-radius: 0 0 6px 6px;
-    padding: 12px; margin-top: -10px; margin-bottom: 12px;
-    display: flex; flex-direction: column; gap: 8px;
-}
+/* Sub-opções e Selects */
+.nested-settings-box { background: #1c1c1f; border: 1px solid #383840; border-top: none; border-left: 3px solid #6c5ce7; border-radius: 0 0 6px 6px; padding: 12px; margin-top: -10px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; transition: all 0.3s ease; }
 .nested-settings-box .setting-card { margin-bottom: 0; background: #202024; border-color: #333; padding: 6px 10px; }
+.modern-select { background: #1a1a1d; color: white; border: 1px solid #444; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-family: inherit; transition: all 0.2s ease; }
 
-/* Selects */
-.modern-select {
-    background: #1a1a1d; color: white; border: 1px solid #444; 
-    padding: 6px 10px; border-radius: 4px; cursor: pointer; 
-    font-size: 12px; font-family: inherit; outline: none;
-}
-.modern-select:focus { border-color: #6c5ce7; }
+/* Tooltip (Ícone i) */
+.info-icon { display: inline-flex; justify-content: center; align-items: center; width: 15px; height: 15px; border-radius: 50%; background: #444; color: #fff; font-size: 10px; font-style: normal; cursor: help; position: relative; font-weight: bold; transition: all 0.2s ease; }
+.info-icon:hover { background: #6c5ce7; box-shadow: 0 0 8px rgba(108, 92, 231, 0.6); transform: scale(1.1); }
+.info-icon:hover::after { content: attr(data-tooltip); position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); background: #111; border: 1px solid #6c5ce7; padding: 8px 12px; border-radius: 6px; font-size: 11px; white-space: normal; width: 220px; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.8); color: #ddd; font-weight: normal; text-align: left; }
 
-/* =========================================
-   TOOLTIP ICON ( i )
-   ========================================= */
-.info-icon {
-    display: inline-flex; justify-content: center; align-items: center;
-    width: 15px; height: 15px; border-radius: 50%;
-    background: #444; color: #fff; font-size: 10px; font-style: normal;
-    margin-left: 8px; cursor: help; position: relative; font-weight: bold;
-}
-.info-icon:hover { background: #6c5ce7; }
-.info-icon:hover::after {
-    content: attr(data-tooltip);
-    position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%);
-    background: #111; border: 1px solid #6c5ce7; padding: 8px 12px;
-    border-radius: 6px; font-size: 11px; white-space: normal;
-    width: 220px; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.8);
-    color: #ddd; font-weight: normal; text-align: left;
-}
-
-/* =========================================
-   ATUALIZAÇÃO EM MASSA E BACKUP
-   ========================================= */
-.batch-btn { border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; transition: transform 0.15s; }
-.batch-btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+/* Ações em Lote */
+.batch-btn { border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; }
 #btnBatchUpdate { background: #e84118; color: white; }
 #btnRestoreBackup { background: #2e51a2; color: white; margin-left: 8px; }
 
-/* LISTAS DINÂMICAS E CRITÉRIOS */
-.dynamic-list-item { display: flex; justify-content: space-between; align-items: center; background: #202024; padding: 6px 10px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #444; font-size: 12px; }
+/* Listas Dinâmicas (Efeito Deslize) */
+.dynamic-list-item { display: flex; justify-content: space-between; align-items: center; background: #202024; padding: 6px 10px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #444; font-size: 12px; transition: all 0.2s ease; }
+.dynamic-list-item:hover { background: #26262b; border-color: #6c5ce7; transform: translateX(2px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 .dynamic-list-btn { background: #ff7675; color: white; border: none; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-size: 10px; font-weight: bold; }
 .input-row { display: flex; gap: 8px; margin-top: 10px; }
-.modern-input { flex-grow: 1; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; background: #1a1a1d; color: white; font-size: 12px; }
+.modern-input { flex-grow: 1; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; background: #1a1a1d; color: white; font-size: 12px; transition: all 0.2s ease; }
 .add-btn { background: #00b894; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
 
-/* SIMULADOR & DISCORD BAR */
+/* Simulador e Barra do Discord */
 .sim-disabled { opacity: 0.3 !important; filter: grayscale(100%); }
-.sim-element { cursor: grab; }
-.sim-element:active { cursor: grabbing; }
+.sim-element { cursor: grab; transition: filter 0.2s ease; }
+.sim-element:hover { filter: brightness(1.1); }
+.sim-element:active { cursor: grabbing; filter: brightness(0.9); }
 
-#discordSaveBar {
-    position: fixed; bottom: -85px; left: 50%; transform: translateX(-50%);
-    width: 90%; max-width: 500px; background: #111214; border: 1px solid #6c5ce7;
-    border-radius: 8px; padding: 10px 16px; display: flex; justify-content: space-between;
-    align-items: center; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-    transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 9999;
-}
+#discordSaveBar { position: fixed; bottom: -85px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; background: #111214; border: 1px solid #6c5ce7; border-radius: 8px; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 9999; }
 #discordSaveBar span { font-size: 13px; font-weight: bold; color: #fff; }
 #discordSaveBar .button-group { display: flex; gap: 8px; }
 #discordSaveBar button { border: none; border-radius: 4px; padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 12px; }
-#btnDescartarCriterios { background: transparent; color: #ff7675; }
+#btnDescartarCriterios { background: transparent; color: #ff7675; border: 1px solid #ff7675; }
+#btnDescartarCriterios:hover { background: #ff7675; color: #fff; }
 #btnSalvarCriterios { background: #248046; color: white; }
 
-#netflixSubSize::-webkit-slider-thumb {
-    -webkit-appearance: none !important;
-    appearance: none !important;
-    width: 16px !important;
-    height: 16px !important;
-    border-radius: 50% !important;
-    background: #e50914 !important;
-    border: 2px solid #ffffff !important;
-    box-shadow: 0 0 5px rgba(0,0,0,0.5) !important;
-    cursor: pointer !important;
-    transition: transform 0.1s, background-color 0.1s !important;
-}
+/* Régua do Slider (Netflix) */
+#netflixSubSize::-webkit-slider-thumb { -webkit-appearance: none !important; appearance: none !important; width: 16px !important; height: 16px !important; border-radius: 50% !important; background: #e50914 !important; border: 2px solid #ffffff !important; box-shadow: 0 0 5px rgba(0,0,0,0.5) !important; cursor: pointer !important; transition: transform 0.1s, background-color 0.1s !important; }
+#netflixSubSize::-webkit-slider-thumb:hover { transform: scale(1.2) !important; background: #ff1e27 !important; }
+#netflixSubSize::-moz-range-thumb { width: 16px !important; height: 16px !important; border-radius: 50% !important; background: #e50914 !important; border: 2px solid #ffffff !important; box-shadow: 0 0 5px rgba(0,0,0,0.5) !important; cursor: pointer !important; transition: transform 0.1s !important; }
+#netflixSubSize::-moz-range-thumb:hover { transform: scale(1.2) !important; }
 
-#netflixSubSize::-webkit-slider-thumb:hover {
-    transform: scale(1.2) !important;
-    background: #ff1e27 !important; 
-}
+/* Pílulas das Redes Sociais (Invertidas - Escuro para Colorido) */
+.social-pill { background: #202024; color: #a8a8b3; border: 1px solid #29292e; text-decoration: none; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 50px; display: flex; align-items: center; gap: 8px; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer; }
+.social-pill:hover { transform: translateY(-3px); color: #fff; border-color: transparent; }
 
-#netflixSubSize::-moz-range-thumb {
-    width: 16px !important;
-    height: 16px !important;
-    border-radius: 50% !important;
-    background: #e50914 !important; 
-    border: 2px solid #ffffff !important;
-    box-shadow: 0 0 5px rgba(0,0,0,0.5) !important;
-    cursor: pointer !important;
-    transition: transform 0.1s !important;
-}
-
-#netflixSubSize::-moz-range-thumb:hover {
-    transform: scale(1.2) !important;
-}
+.social-pill.github:hover { background: #333333; box-shadow: 0 6px 15px rgba(51, 51, 51, 0.4); }
+.social-pill.discord:hover { background: #5865F2; box-shadow: 0 6px 15px rgba(88, 101, 242, 0.4); }
+.social-pill.youtube:hover { background: #FF0000; box-shadow: 0 6px 15px rgba(255, 0, 0, 0.4); }
+.social-pill.google-drive:hover { background: #00AA47; box-shadow: 0 6px 15px rgba(0, 170, 71, 0.4); }
+.social-pill.netflix:hover { background: #E50914; box-shadow: 0 6px 15px rgba(229, 9, 20, 0.4); }
+.social-pill.pix:hover { background: #32BCAD; box-shadow: 0 6px 15px rgba(50, 188, 173, 0.4); }
+.social-pill.gmail:hover { background: #EA4335; box-shadow: 0 6px 15px rgba(234, 67, 53, 0.4); }
+.social-pill.prime-video:hover { background: #00A8E8; box-shadow: 0 6px 15px rgba(0, 168, 232, 0.4); }

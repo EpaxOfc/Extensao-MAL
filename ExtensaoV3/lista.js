@@ -1,11 +1,15 @@
+let is3DEnabled = false;
+let listaGlobalAnimes = [];
+let animeAtualModal = null;
+
 function normalizarCriterio(nome) {
     if (!nome) return "";
     let n = nome.trim();
 
     const correcoes = [
-        { regex: /Dire.*(ced|amp|ccedil|tilde|ccedil|atilde).*o/i, sub: "Direção" },
-        { regex: /Anim.*(ced|amp|ccedil|tilde|ccedil|atilde).*o/i, sub: "Animação" },
-        { regex: /M.*(amp|acute|eacut|dia).*dia/i, sub: "Média" },
+        { regex: /Dire.{0,20}(ced|amp|ccedil|tilde|atilde).{0,5}o/i, sub: "Direção" },
+        { regex: /Anim.{0,20}(ced|amp|ccedil|tilde|ccedil|atilde).{0,5}o/i, sub: "Animação" },
+        { regex: /M.{0,20}(amp|acute|eacut|dia).{0,5}dia/i, sub: "Média" },
         { regex: /Complexidade/i, sub: "Complexidade" },
         { regex: /Enredo/i, sub: "Enredo" },
         { regex: /Originalidade/i, sub: "Originalidade" },
@@ -50,15 +54,62 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('filtroNome').addEventListener('input', filtrarLista);
     document.getElementById('ordenarPor').addEventListener('change', filtrarLista);
+    document.getElementById('filtroNotas').addEventListener('change', filtrarLista);
+    
+    document.querySelectorAll('.cb-status').forEach(cb => {
+        cb.addEventListener('change', filtrarLista);
+    });
+
+    const btnDropdown = document.getElementById('btnDropdownStatus');
+    const menuDropdown = document.getElementById('listaDropdownStatus');
+
+    btnDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menuDropdown.classList.toggle('show');
+    });
+
+    window.addEventListener('click', (e) => {
+        if (!e.target.closest('.custom-dropdown-container')) {
+            menuDropdown.classList.remove('show');
+        }
+    });
     
     document.querySelector('.close').addEventListener('click', fecharModal);
     window.addEventListener('click', (e) => { 
         if (e.target == document.getElementById('modalDetalhes')) fecharModal(); 
     });
-});
 
-let listaGlobalAnimes = [];
-let animeAtualModal = null;
+    chrome.storage.local.get(['enable3DHover'], (res) => {
+        is3DEnabled = res.enable3DHover || false;
+        atualizarBotao3D();
+    });
+
+    document.getElementById('btnToggle3D').addEventListener('click', () => {
+        is3DEnabled = !is3DEnabled;
+        chrome.storage.local.set({ enable3DHover: is3DEnabled });
+        atualizarBotao3D();
+        
+        if (!is3DEnabled) {
+            document.querySelectorAll('.anime-card').forEach(card => {
+                card.style.transform = '';
+                card.style.transition = '';
+                card.style.boxShadow = '';
+            });
+        }
+    });
+
+    function atualizarBotao3D() {
+        const btn = document.getElementById('btnToggle3D');
+        const status = document.getElementById('status3D');
+        if (is3DEnabled) {
+            btn.classList.add('active');
+            status.textContent = 'ON';
+        } else {
+            btn.classList.remove('active');
+            status.textContent = 'OFF';
+        }
+    }
+});
 
 function fecharModal() {
     document.getElementById('modalDetalhes').style.display = "none";
@@ -75,12 +126,7 @@ async function carregarListaCompleta(token) {
         const data = await response.json();
 
         if (data.data) {
-            const listaFiltrada = data.data.filter(item => {
-                const s = item.list_status.status;
-                return s === 'completed' || s === 'dropped' || s === 'watching';
-            });
-
-            listaGlobalAnimes = listaFiltrada.map(item => {
+            listaGlobalAnimes = data.data.map(item => {
                 const anime = item.node;
                 const status = item.list_status || {};
                 const dadosProcessados = processarComentario(status.comments);
@@ -95,11 +141,12 @@ async function carregarListaCompleta(token) {
                     estudio: anime.studios && anime.studios.length > 0 ? anime.studios[0].name : "Estúdio Desconhecido",
                     mediaTecnica: dadosProcessados.media,
                     notasDetalhadas: dadosProcessados.detalhes,
-                    comentarioOriginal: status.comments || ""
+                    comentarioOriginal: status.comments || "",
+                    statusLista: status.status
                 };
             });
 
-            console.log("Lista filtrada e carregada:", listaGlobalAnimes);
+            console.log("Lista completa carregada:", listaGlobalAnimes);
             renderizarCards(listaGlobalAnimes);
         }
     } catch (err) {
@@ -201,6 +248,33 @@ function renderizarCards(lista) {
         card.querySelector('.card-tech-score').textContent = anime.mediaTecnica || "N/A";
         card.querySelector('.card-studio').textContent = anime.estudio || "Estúdio Desconhecido";
         card.querySelector('.card-year').textContent = anime.ano || "TBA";
+
+        card.addEventListener('mousemove', (e) => {
+            if (!is3DEnabled) return; 
+
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top; 
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            const rotateX = ((y - centerY) / centerY) * -12; 
+            const rotateY = ((x - centerX) / centerX) * 12;
+            
+            card.style.transition = 'none'; 
+            
+            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
+            
+            card.style.boxShadow = `${-rotateY}px ${rotateX + 10}px 25px rgba(0,0,0,0.7)`;
+        });
+
+        card.addEventListener('mouseleave', () => {
+            if (!is3DEnabled) return;
+            card.style.transition = 'transform 0.5s ease, box-shadow 0.5s ease';
+            card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+            card.style.boxShadow = ''; 
+        });
 
         grid.appendChild(card);
     });
@@ -504,11 +578,33 @@ async function salvarNoMAL(id) {
 function filtrarLista() {
     const busca = document.getElementById('filtroNome').value.toLowerCase();
     const ordem = document.getElementById('ordenarPor').value;
+    const filtroNotas = document.getElementById('filtroNotas').value;
+
+    const checkboxes = document.querySelectorAll('.cb-status:checked');
+    const statusSelecionados = Array.from(checkboxes).map(cb => cb.value);
+
+    const badge = document.getElementById('badgeStatusCount');
+    if (statusSelecionados.length === 5) {
+        badge.textContent = "Todos";
+    } else if (statusSelecionados.length === 0) {
+        badge.textContent = "Nenhum";
+    } else {
+        badge.textContent = statusSelecionados.length;
+    }
 
     let filtrados = listaGlobalAnimes.filter(a => a.titulo.toLowerCase().includes(busca));
 
-    if (ordem === 'recente') {
-    } else if (ordem === 'nota') {
+    filtrados = filtrados.filter(a => statusSelecionados.includes(a.statusLista));
+
+    if (filtroNotas === 'sem_oficial') {
+        filtrados = filtrados.filter(a => a.notaMAL === 0);
+    } else if (filtroNotas === 'sem_tecnica') {
+        filtrados = filtrados.filter(a => a.mediaTecnica === "N/A");
+    } else if (filtroNotas === 'sem_nota') {
+        filtrados = filtrados.filter(a => a.notaMAL === 0 && a.mediaTecnica === "N/A");
+    }
+
+    if (ordem === 'nota') {
         filtrados.sort((a, b) => b.notaMAL - a.notaMAL);
     } else if (ordem === 'media_tecnica') {
         filtrados.sort((a, b) => {
@@ -522,3 +618,4 @@ function filtrarLista() {
 
     renderizarCards(filtrados);
 }
+

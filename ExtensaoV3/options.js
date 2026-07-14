@@ -205,10 +205,136 @@ document.addEventListener('DOMContentLoaded', () => {
             let nomeEn = inputEn.value.trim().toLowerCase();
             if (nomePt && nomeEn) {
                 let ptLimpo = nomePt.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, "").trim();
+                if (ptLimpo === '__proto__' || ptLimpo === 'constructor') {
+                    alert("Palavra reservada e inválida!");
+                    return;
+                }
                 dicionarioCustom[ptLimpo] = nomeEn;
                 chrome.storage.local.set({ customDict: dicionarioCustom }, renderizarDicionario);
                 inputPt.value = ""; inputEn.value = "";
             }
+        });
+    }
+    const floatApoio = document.getElementById('floatApoio');
+    const btnCloseFloat = document.getElementById('btnCloseFloat');
+    const floatText = document.getElementById('floatText');
+    
+    let isFloatCollapsed = false;
+
+    if (floatApoio && btnCloseFloat && floatText) {
+
+        // AGORA A PÍLULA INTEIRA É CLICÁVEL! (Se clicar no fundo roxo, ela desce)
+        floatApoio.addEventListener('click', () => {
+            const footer = document.getElementById('footerSobre');
+            if (footer) {
+                footer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                
+                footer.style.transition = "box-shadow 0.5s ease-in-out";
+                footer.style.boxShadow = "0 0 20px rgba(108, 92, 231, 0.6)";
+                setTimeout(() => { footer.style.boxShadow = "none"; }, 1500);
+            }
+        });
+
+        // Função para encolher a pílula
+        const colapsarPilula = () => {
+            isFloatCollapsed = true;
+            floatApoio.style.maxWidth = '46px'; 
+            floatApoio.style.padding = '12px 14px';
+            floatApoio.style.gap = '0px';
+            
+            floatText.style.opacity = '0';
+            btnCloseFloat.style.opacity = '0';
+            
+            setTimeout(() => {
+                if(isFloatCollapsed) {
+                    floatText.style.display = 'none';
+                    btnCloseFloat.style.display = 'none';
+                }
+            }, 300);
+        };
+
+        // Função para expandir a pílula
+        const expandirPilula = () => {
+            if (!isFloatCollapsed) return;
+            isFloatCollapsed = false;
+            
+            floatText.style.display = 'inline';
+            btnCloseFloat.style.display = 'block';
+            
+            setTimeout(() => {
+                floatApoio.style.maxWidth = '250px';
+                floatApoio.style.padding = '12px 20px';
+                floatApoio.style.gap = '15px';
+                
+                floatText.style.opacity = '1';
+                btnCloseFloat.style.opacity = '1';
+            }, 10);
+        };
+
+        // Quando clica no X, ela colapsa (O stopPropagation impede que a tela role para baixo)
+        btnCloseFloat.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            colapsarPilula();
+        });
+
+        // Expande ao passar o mouse por cima
+        floatApoio.addEventListener('mouseenter', () => {
+            expandirPilula();
+        });
+
+        // Efeitos visuais do X
+        btnCloseFloat.addEventListener('mouseover', () => btnCloseFloat.style.color = '#ff7675');
+        btnCloseFloat.addEventListener('mouseout', () => btnCloseFloat.style.color = 'rgba(255,255,255,0.6)');
+    }
+
+    const btnMostrarPix = document.getElementById('btnMostrarPix');
+    const areaPix = document.getElementById('areaPix');
+    const btnCopiarPix = document.getElementById('btnCopiarPix');
+    if (btnCopiarPix) {
+        btnCopiarPix.addEventListener('click', () => {
+            
+            const chavePix = "00020126520014BR.GOV.BCB.PIX0119epaxdev51@gmail.com0207Apoiar?5204000053039865802BR5921MATEUS DE ABREU SOUZA6008BRASILIA62120508Extensao63044460"; 
+            
+            navigator.clipboard.writeText(chavePix).then(() => {
+                const textoOriginal = btnCopiarPix.innerText;
+                btnCopiarPix.innerText = "✔️ Copiado com sucesso!";
+                btnCopiarPix.style.background = "#27ae60";
+                
+                setTimeout(() => {
+                    btnCopiarPix.innerText = textoOriginal;
+                    btnCopiarPix.style.background = "#6c5ce7";
+                }, 3000);
+            });
+        });
+    }
+
+    if (btnMostrarPix && areaPix) {
+        btnMostrarPix.addEventListener('click', () => {
+            if (areaPix.style.display === 'none') {
+                areaPix.style.display = 'flex';
+                setTimeout(() => {
+                    areaPix.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 50);
+            } else {
+                areaPix.style.display = 'none';
+            }
+        });
+    }
+
+    if (btnCopiarPix) {
+        btnCopiarPix.addEventListener('click', () => {
+            const chavePix = "Epaxdev51@gmail.com"; 
+            
+            navigator.clipboard.writeText(chavePix).then(() => {
+                const textoOriginal = btnCopiarPix.innerText;
+                btnCopiarPix.innerText = "✔️ Copiado com sucesso!";
+                btnCopiarPix.style.background = "#27ae60";
+                
+                setTimeout(() => {
+                    btnCopiarPix.innerText = textoOriginal;
+                    btnCopiarPix.style.background = "#6c5ce7";
+                }, 3000);
+            });
         });
     }
 
@@ -985,9 +1111,9 @@ async function restaurarNotasOriginais() {
 function recalcularMediaDoComentario(texto) {
     if (!texto) return null;
 
-    const txtArea = document.createElement('textarea');
-    txtArea.innerHTML = texto;
-    const textoDecodificado = txtArea.value;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(texto, 'text/html');
+    const textoDecodificado = doc.documentElement.textContent || "";
 
     const linhas = textoDecodificado.split('\n');
     let soma = 0;
@@ -1154,3 +1280,17 @@ async function executarSincronizacaoLocalParaMAL() {
 
     if (progress) progress.innerText = "Upload concluído com sucesso! Suas avaliações locais estão no MAL.";
 }
+
+// CARREGAR ÍCONES EXTERNO
+const urlIcones = chrome.runtime.getURL('icons.html');
+
+fetch(urlIcones)
+    .then(res => {
+        if (!res.ok) throw new Error("Arquivo não encontrado na pasta.");
+        return res.text();
+    })
+    .then(html => {
+        const container = document.getElementById('containerIcones');
+        if (container) container.innerHTML = html;
+    })
+    .catch(err => console.error("MAL Reviewer - Erro ao carregar os ícones SVGs:", err));

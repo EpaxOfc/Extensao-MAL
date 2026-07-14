@@ -171,7 +171,7 @@ async function iniciar(nomeInicial, epAtual, animeExato = null) {
             divCorretor.innerHTML = `
                 <div style="font-size: 13px; margin-bottom: 5px; color: #fff;">Ou corrigirá apenas o número do episódio:</div>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <input type="number" id="inputCorrecaoEp" value="${epAtual || 1}" style="width: 50px; background: #222; color: #fff; border: 1px solid #6c5ce7; border-radius: 4px; padding: 4px;">
+                    <input type="number" id="inputCorrecaoEp" value="${parseInt(epAtual) || 1}" style="width: 50px; background: #222; color: #fff; border: 1px solid #6c5ce7; border-radius: 4px; padding: 4px;">
                     <button id="btnSalvarCorrecaoEp" style="background: #6c5ce7; color: #fff; border: none; border-radius: 4px; cursor: pointer; padding: 4px 10px; font-weight: bold;">Salvar Episódio</button>
                 </div>
             `;
@@ -510,10 +510,10 @@ function buscarNoJikan(termo, buscaAutomatica) {
                 let div = document.createElement('div');
                 div.className = 'item-resultado';
                 div.innerHTML = `
-                    <img src="${anime.images.jpg.small_image_url}">
+                    <img src="${escapeHTML(anime.images.jpg.small_image_url || '')}">
                     <div>
-                        <b>${anime.title}</b><br>
-                        <small>${anoLista} • ${anime.media_type.toUpperCase()}</small>
+                        <b>${escapeHTML(anime.title)}</b><br>
+                        <small>${escapeHTML(anoLista)} • ${escapeHTML(anime.media_type ? anime.media_type.toUpperCase() : 'TV')}</small>
                     </div>`;
                 
                 div.addEventListener('click', () => {

@@ -223,8 +223,7 @@
         </label>
     </div>
 
-    <!-- CAIXA INTEGRADA: AJUSTE DE TAMANHOS, SIMULADOR E DESIGN DE LEGENDAS -->
-    <!-- CAIXA INTEGRADA: AJUSTE DE TAMANHOS, SIMULADOR E DESIGN DE LEGENDAS -->
+    <!-- AJUSTE DE TAMANHOS, SIMULADOR E DESIGN DE LEGENDAS -->
     <div class="simulator-wrapper-box" style="border: 1px solid #444; border-radius: 8px; padding: 20px; background: rgba(20, 20, 24, 0.5); margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
         <h2 style="margin-top: 0; border: none; padding-bottom: 0;">Ajuste de Tamanhos e Simulação</h2>
         <p style="font-size:11px; color:#aaa; margin-bottom:15px; margin-top:-5px;">
@@ -342,7 +341,7 @@
             </div>
         </div>
 
-        <!-- NOVOS INTERRUPTORES DO SIMULADOR -->
+        <!-- INTERRUPTORES DO SIMULADOR -->
         <div class="simulator-toggles" style="display: flex; gap: 12px; margin-top: 15px; width: 100%;">
             <label class="setting-card" style="cursor: pointer; margin-bottom: 0; padding: 10px 16px; flex: 1; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box;">
                 <span class="setting-title" style="font-size: 13px;">Exibir Widgets</span>
@@ -361,17 +360,19 @@
             </label>
         </div>
 
-        <!-- CONTROLE DA LEGENDA NETFLIX (INTEGRADO NO CONTAINER) -->
+        <!-- CONTROLE DA LEGENDA NETFLIX -->
         <div style="margin-top: 15px;">
             <label class="setting-card" style="cursor: pointer; border-color: #e50914; margin-bottom: 0;">
                 <div class="setting-info">
-                    <span class="setting-title" style="color: #e50914;">Legenda estilo Crunchyroll (Netflix)</span>
-                    <span class="setting-desc" style="font-size: 11px; color: #aaa; opacity: 0.7;">Altera a fonte da Netflix para ter a mesma borda preta grossa e texto dos animes.</span>
+                    <span class="setting-title" style="color: #e50914; display: flex; align-items: center; gap: 6px;">
+                         <img src="netflix.svg" width="16" height="16" alt="Logo Netflix"> Legenda estilo Crunchyroll (Netflix)
+                    </span>
+                    <span class="setting-desc" style="font-size: 11px; color: #aaa; opacity: 0.7;">Altera a fonte da Netflix para ter a mesma borda preta grossa.</span>
                 </div>
                 <div class="toggle"><input type="checkbox" id="netflixCrSubs"><span class="slider"></span></div>
             </label>
             
-            <!-- RÉGUA DE ESCALA DO TAMANHO DA LEGENDA (Ajuste de Alto Contraste) -->
+            <!-- RÉGUA DE ESCALA DO TAMANHO DA LEGENDA  -->
             <div id="netflixSubSizeContainer" class="nested-settings-box" style="margin-top: 10px; display: none; padding: 14px 16px; border-color: rgba(229, 9, 20, 0.4); background: rgba(46, 46, 54, 0.3);">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px; width: 100%;">
                     <div class="setting-info" style="max-width: 60%;">
@@ -517,26 +518,34 @@
     </div>
 
     <!-- SEÇÃO ATUALIZADA: PLATAFORMAS (SEM A DUPLICATA DA NETFLIX) -->
-    <h2>Suporte a Plataformas</h2>
+     <h2>Suporte a Plataformas</h2>
     <div class="section" style="margin-bottom: 25px;">
 
-            <h3 style="color: #ffee00;">📂 Ativar Rastreamento no Google Drive</h3>
-            <p style="font-size: 11px; color: #aaa; margin-top: -5px; margin-bottom: 15px;">Permite que a extensão leia títulos de animes que você reproduzir diretamente do seu Google Drive. (Por razões de segurança e privacidade dos seus arquivos pessoais, esta opção vem desativada por padrão).</p>
+        <!-- GOOGLE DRIVE -->
+        <h3 style="color: #00AA47; display: flex; align-items: center; gap: 6px;">
+            <img src="drive.svg" width="18" height="18" alt="Logo Drive"> Ativar Rastreamento no Google Drive
+        </h3>
+        <p style="font-size: 11px; color: #aaa; margin-top: -5px; margin-bottom: 15px;">Permite que a extensão leia títulos de animes que você reproduzir diretamente do seu Google Drive. (Por razões de segurança e privacidade dos seus arquivos pessoais, esta opção vem desativada por padrão).</p>
 
-            <label class="setting-card" style="cursor: pointer; margin-bottom: 8px;">
-                <span class="setting-title" style="color: #ffee00;">Ativar no Drive</span>
-                                <span class="setting-desc" style="font-size: 11px; color: #aaa; opacity: 0.7;"><b style="color: #ff7675;">Permite o rastreio dentro dos videos no Drive</b></span>
-                <div class="toggle"><input type="checkbox" id="enableGoogleDrive"><span class="slider"></span></div>
+        <label class="setting-card" style="cursor: pointer; margin-bottom: 20px;">
+            <div class="setting-info">
+                <span class="setting-title" style="color: #00AA47;">Ativar no Drive</span>
+                <span class="setting-desc" style="font-size: 11px; color: #aaa; opacity: 0.7;">Permite o rastreio dentro dos vídeos no Drive</span>
+            </div>
+            <div class="toggle"><input type="checkbox" id="enableGoogleDrive"><span class="slider"></span></div>
+        </label>
 
-            </label>
-
-        <h3 style="color: #00a8ff;">🛒 Amazon Prime Video</h3>
+        <!-- PRIME VIDEO -->
+        <h3 style="color: #00A8E8; display: flex; align-items: center; gap: 6px;">
+            <img src="prime.svg" width="18" height="18" alt="Logo Prime" style="background: #2196f3;
+        padding: 4px; border-radius: 4px;"> Amazon Prime Video
+        </h3>
         <p style="font-size: 11px; color: #aaa; margin-top: -5px; margin-bottom: 15px;">A arquitetura da Amazon bloqueia a leitura de tempo na maioria dos casos.</p>
         
         <label class="setting-card" style="cursor: pointer; margin-bottom: 8px;">
             <div class="setting-info">
-                <span class="setting-title" style="color: #00a8ff;">Monitoramento Básico (Padrão)</span>
-                <span class="setting-desc" style="font-size: 11px; color: #aaa; opacity: 0.7;">Detecta o anime e exibe o aviso de nota no último episódio. <b style="color: #ff7675;">Não atualiza o progresso no MAL automaticamente.</b></span>
+                <span class="setting-title" style="color: #00A8E8;">Monitoramento Básico (Padrão)</span>
+                <span class="setting-desc" style="font-size: 11px; color: #aaa; opacity: 0.7;">Detecta o anime e exibe o aviso de nota no último episódio. <b style="color: #ff7675;">Não atualiza o progresso.</b></span>
             </div>
             <div class="toggle"><input type="checkbox" id="enablePrimeBasic"><span class="slider"></span></div>
         </label>
@@ -549,6 +558,9 @@
             <div class="toggle"><input type="checkbox" id="enablePrimeAdvanced"><span class="slider"></span></div>
         </label>
     </div>
+
+
+    
 
     <h2>Configurações Avançadas</h2>
     
@@ -580,7 +592,77 @@
             <button id="btnSalvarCriterios">Salvar</button>
         </div>
     </div>
+    
+    <!-- SEÇÃO SOBRE O PROJETO   -->
+    <div id="footerSobre" style="margin-top: 50px; padding: 25px; border-top: 1px solid #444; text-align: center; background: #1a1a1d; border-radius: 8px;">
+        <h3 style="color: #a29bfe; font-size: 18px; margin-bottom: 5px;">Gostou do MAL Reviewer?</h3>
+        <p style="font-size: 13px; color: #ccc; margin-bottom: 20px;">
+            Esta extensão é um projeto de código aberto, feito de fã para fã.<br>
+            Apoie o desenvolvimento pagando um café ou ajude a melhorar relatando os bugs!
+        </p>
+        <!-- ASSINATURA E REDES SOCIAIS -->
+        <div style="margin-bottom: 25px; margin-top: 20px;">
+            <p style="font-size: 13px; color: #888; font-weight: bold; margin-bottom: 12px;">
+                Feito por EpaxOfc
+            </p>
+            
+            <!-- Links das Redes Sociais -->
+            <div style="display: flex; justify-content: center; gap: 12px;">
+                
+                <a href="https://github.com/EpaxOfc" target="_blank" rel="noopener noreferrer" class="social-pill github">
+                    <svg width="16" height="16" fill="currentColor"><use href="#icon-github"></use></svg> GitHub
+                </a>
+
+                <a href="https://discord.gg/SEU_LINK" target="_blank" rel="noopener noreferrer" class="social-pill discord">
+                    <svg width="16" height="16" fill="currentColor"><use href="#icon-discord"></use></svg> Discord
+                </a>
+
+                <a href="https://youtube.com/@EpaxAnimes" target="_blank" rel="noopener noreferrer" class="social-pill youtube">
+                    <svg width="16" height="16" fill="currentColor"><use href="#icon-youtube"></use></svg> YouTube
+                </a>
+
+            </div>
+        </div>
+        
+        <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+            <button id="btnMostrarPix" class="social-pill pix">
+                <svg width="16" height="16" fill="currentColor"><use href="#icon-pix"></use></svg> Apoiar com PIX
+            </button>
+            
+            <a href="https://github.com/EpaxOfc/Extensao-MAL/issues/new" target="_blank" rel="noopener noreferrer" class="social-pill github">
+                <svg width="16" height="16" fill="currentColor"><use href="#icon-github"></use></svg> Abrir Ticket (GitHub)
+            </a>
+
+            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=Epaxdev51@gmail.com&su=Feedback/Bug+-+MAL+Reviewer&body=Por+favor,+descreva+o+que+aconteceu:%0A%0A" target="_blank" rel="noopener noreferrer" class="social-pill gmail">
+                <svg width="16" height="16" fill="currentColor"><use href="#icon-gmail"></use></svg> Relatar Erro (Gmail)
+            </a>
+        </div>
+
+        <div id="areaPix" style="display: none; margin-top: 25px; background: #202024; padding: 20px; border-radius: 8px; border: 1px dashed #00b894; flex-direction: column; align-items: center; gap: 15px; width: 100%; max-width: 320px; margin-left: auto; margin-right: auto;">
+            <p style="font-size: 13px; color: #fff; margin: 0; font-weight: bold;">Escaneie o QR Code com o app do banco:</p>
+            
+            <img src="qrcode-pix.png" alt="QR Code PIX" style="width: 150px; height: 150px; border-radius: 8px; background: white; padding: 5px;">
+            
+            <p style="font-size: 12px; color: #ccc; margin: 0;">Ou use o botão abaixo para copiar a chave PIX:</p>
+            
+            <button id="btnCopiarPix" style="background: #6c5ce7; color: white; padding: 8px 15px; border-radius: 4px; border: none; font-size: 12px; font-weight: bold; cursor: pointer; width: 100%;">
+                Copiar Chave / Copia e Cola
+            </button>
+            <span style="font-size: 11px; color: #888;">Chave: Epaxdev51@gmail.com</span>
+        </div>
+    </div>
+
+    <div id="floatApoio" style="position: fixed; bottom: 30px; right: 30px; background: linear-gradient(135deg, #6c5ce7, #5649c0); padding: 12px 20px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 15px; z-index: 9999; border: 1px solid rgba(162, 155, 254, 0.5); overflow: hidden; white-space: nowrap; max-width: 250px; transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); cursor: pointer; user-select: none; -webkit-user-select: none;">
+        
+        <div style="color: white; font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 8px; width: 100%;">
+            <span style="font-size: 16px;">💡</span> 
+            <span id="floatText" style="transition: opacity 0.3s;">Apoie ou relate bugs</span>
+        </div>
+
+        <button id="btnCloseFloat" title="Colapsar Pílula" style="position: relative; z-index: 2; background: none; border: none; color: rgba(255,255,255,0.6); font-size: 18px; cursor: pointer; padding: 0 5px; line-height: 1; transition: opacity 0.3s, color 0.2s;">×</button>
+    </div>
 
     <script src="options.js"></script>
+    <div id="containerIcones"></div>
 </body>
 </html>

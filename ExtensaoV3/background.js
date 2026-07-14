@@ -4,13 +4,14 @@ importScripts('config.js');
 const CLIENT_ID = CONFIG.CLIENT_ID; 
 const REDIRECT_URI = chrome.identity.getRedirectURL(); 
 
-const HABILITAR_LOGS_DESENVOLVEDOR = true;
+const HABILITAR_LOGS_DESENVOLVEDOR = false;
 
 function devLog(...args) {
     if (HABILITAR_LOGS_DESENVOLVEDOR) {
         console.log(...args);
     }
 }
+const devlog = devLog;
 
 devLog("Sua Redirect URI é:", REDIRECT_URI);
 
@@ -474,6 +475,7 @@ async function executarBuscaJikan(termo, isAuto, isMovie, sendResponse) {
         const dicionarioUsuario = localData.customDict || {};
 
         const dicionarioBruto = {
+            "Kimi no Koto ga Daidaidaidaidaisuki na 100-nin no Kanojo 3": "The 100 Girlfriends Who Really, Really, Really, Really, Really Love You season 3",
             "cyberpunk mercenarios": "cyberpunk edgerunners",
             "mercenarios": "cyberpunk edgerunners",
             "dogulwang": "Dogul Wang",
@@ -675,9 +677,9 @@ async function executarBuscaJikan(termo, isAuto, isMovie, sendResponse) {
 
         if (resultados.length === 0 && termoFinalBusca.includes('-')) {
             let termoSemHifem = termoFinalBusca;
-            termoSemHifem = termoSemHifem.replace(/-(san|sun|kun|chan|sama|dono|senpai|kohai)\b/gi, '___$1___');
+            termoSemHifem = termoSemHifem.replace(/-(san|sun|kun|chan|sama|dono|senpai|kohai|nin)\b/gi, '___$1___');
             termoSemHifem = termoSemHifem.replace(/-/g, '');
-            termoSemHifem = termoSemHifem.replace(/___(san|sun|kun|chan|sama|dono|senpai|kohai)___/gi, '-$1');
+            termoSemHifem = termoSemHifem.replace(/___(san|sun|kun|chan|sama|dono|senpai|kohai|nin)___/gi, '-$1');
             termoSemHifem = termoSemHifem.replace(/\s+/g, ' ').trim();
 
             if (termoSemHifem !== termoFinalBusca) {
