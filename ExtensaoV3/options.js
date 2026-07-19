@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener('change', (e) => {
             const config = {};
             config[id] = el.tagName === 'SELECT' ? e.target.value : e.target.checked;
-            chrome.storage.local.set(config, () => verificarExibicaoBotoesBatch());
+            chrome.storage.sync.set(config, () => verificarExibicaoBotoesBatch());
             
             if (id.startsWith('enable') && !id.includes('Prime')) syncElementState(id, e.target.checked);
             
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const simSubtitleEx = document.getElementById('sim-subtitle-example');
             if (simSubtitleEx) simSubtitleEx.style.fontSize = `${val}px`;
             
-            chrome.storage.local.set({ netflixSubSize: parseInt(val) });
+            chrome.storage.sync.set({ netflixSubSize: parseInt(val) });
         });
     }
 
@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (url && !sitesCustomizados.includes(url)) {
                 url = url.replace(/(^\w+:|^)\/\//, '').replace(/^www\./, '').split('/')[0];
                 sitesCustomizados.push(url);
-                chrome.storage.local.set({ customUrls: sitesCustomizados }, renderizarUrls);
+                chrome.storage.sync.set({ customUrls: sitesCustomizados }, renderizarUrls);
                 inputUrl.value = "";
             }
         });
@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 dicionarioCustom[ptLimpo] = nomeEn;
-                chrome.storage.local.set({ customDict: dicionarioCustom }, renderizarDicionario);
+                chrome.storage.sync.set({ customDict: dicionarioCustom }, renderizarDicionario);
                 inputPt.value = ""; inputEn.value = "";
             }
         });
@@ -582,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function carregarConfig() {
-    chrome.storage.local.get([
+    chrome.storage.sync.get([
         'autoOpen', 'syncMal', 'officialScore', 'viewMode', 
         'autoUpdateProgress', 'autoUpdateTrigger', 'autoCompleteOnLast', 
         'blockRegressionOnComplete', 'autoOpenOverlayIfNoScore', 
@@ -732,7 +732,7 @@ function carregarConfig() {
 }
 
 function carregarCriterios() {
-    chrome.storage.local.get(['meusCriterios'], (res) => {
+    chrome.storage.sync.get(['meusCriterios'], (res) => {
         criteriosOriginais = res.meusCriterios || [...criteriosPadrao];
         criteriosTemporarios = [...criteriosOriginais];
         renderizarCriteriosTemporarios();
@@ -844,7 +844,7 @@ function verificarAlteracoesCriterios() {
 }
 
 function salvarCriteriosNoStorage() {
-    chrome.storage.local.set({ meusCriterios: criteriosTemporarios }, () => {
+    chrome.storage.sync.set({ meusCriterios: criteriosTemporarios }, () => {
         criteriosOriginais = [...criteriosTemporarios];
         verificarAlteracoesCriterios();
         const textElement = document.getElementById('discordBarText');

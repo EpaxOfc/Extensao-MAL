@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
     verificarConexaoNecessaria();
     configurarOuvintes();
 
-    chrome.storage.local.get(['syncMal', 'viewMode', 'officialScore'], (res) => {
+    chrome.storage.sync.get(['syncMal', 'viewMode', 'officialScore'], (res) => {
         if (res.syncMal) {
             const btn = document.getElementById('btnSalvar');
             btn.innerText = "SALVAR NO MAL";
@@ -283,19 +283,25 @@ function configurarOuvintes() {
                         </div>`;
                     
                     div.addEventListener('click', () => {
-                        chrome.storage.local.set({ isCorrectionMode: false }, () => {
-                            let areaAvaliacao = document.getElementById('areaDeAvaliacao');
-                            if (areaAvaliacao) areaAvaliacao.style.display = 'block';
-                            document.getElementById('correctionModeContainer').style.display = 'none';
-                            
-                            ultimoNomeIniciado = ""; 
+                        chrome.storage.local.get(['isCorrectionMode'], (check) => {
+                            let estavaCorrigindo = check.isCorrectionMode === true;
 
-                            selecionarAnime(anime, true);
-                            verificarNotaNoMAL(anime.mal_id);
-                            listaDiv.style.display = 'none'; 
-                            
-                            chrome.storage.local.get(['autoCloseCorrection'], (res) => {
-                                if (res.autoCloseCorrection ?? true) window.close();
+                            chrome.storage.local.set({ isCorrectionMode: false }, () => {
+                                let areaAvaliacao = document.getElementById('areaDeAvaliacao');
+                                if (areaAvaliacao) areaAvaliacao.style.display = 'block';
+                                document.getElementById('correctionModeContainer').style.display = 'none';
+                                
+                                ultimoNomeIniciado = ""; 
+
+                                selecionarAnime(anime, estavaCorrigindo);
+                                verificarNotaNoMAL(anime.mal_id);
+                                listaDiv.style.display = 'none'; 
+                                
+                                if (estavaCorrigindo) {
+                                    chrome.storage.sync.get(['autoCloseCorrection'], (res) => {
+                                        if (res.autoCloseCorrection ?? true) window.close();
+                                    });
+                                }
                             });
                         });
                     });
@@ -380,7 +386,6 @@ async function traduzirParaIngles(titulo) {
 function gerarInterfaceDinamica(dadosSalvos = null) {
     const container = document.getElementById('containerNotasDinamico');
     
-    // 👈 Adicionado "Trilha Sonora" e "Efeitos Sonoros" na lista base (Total: 12 critérios)
     const defaultCriterios = ["Direção", "Animação", "Complexidade", "Enredo", "Originalidade", "Design", "Coreografia de luta", "Personagens Principais", "Antagonista", "Direção de fotografia", "Trilha Sonora", "Efeitos Sonoros"];
 
     if (!container) return;
@@ -433,7 +438,7 @@ function gerarInterfaceDinamica(dadosSalvos = null) {
         calcularMediaInteligente();
     };
 
-    chrome.storage.local.get(['meusCriterios'], (res) => {
+    chrome.storage.sync.get(['meusCriterios'], (res) => {
         let listaFinal = res.meusCriterios || [...defaultCriterios];
 
         if (dadosSalvos) {
@@ -517,20 +522,26 @@ function buscarNoJikan(termo, buscaAutomatica) {
                     </div>`;
                 
                 div.addEventListener('click', () => {
-                    chrome.storage.local.set({ isCorrectionMode: false }, () => {
-                            let areaAvaliacao = document.getElementById('areaDeAvaliacao');
-                            if (areaAvaliacao) areaAvaliacao.style.display = 'block';
-                            document.getElementById('correctionModeContainer').style.display = 'none';
-                            
-                            ultimoNomeIniciado = ""; 
+                    chrome.storage.local.get(['isCorrectionMode'], (check) => {
+                        let estavaCorrigindo = check.isCorrectionMode === true;
 
-                            selecionarAnime(anime, true);
-                            verificarNotaNoMAL(anime.mal_id);
-                            listaDiv.style.display = 'none';  
-                            
-                            chrome.storage.local.get(['autoCloseCorrection'], (res) => {
-                                if (res.autoCloseCorrection ?? true) window.close();
-                            });
+                        chrome.storage.local.set({ isCorrectionMode: false }, () => {
+                                let areaAvaliacao = document.getElementById('areaDeAvaliacao');
+                                if (areaAvaliacao) areaAvaliacao.style.display = 'block';
+                                document.getElementById('correctionModeContainer').style.display = 'none';
+                                
+                                ultimoNomeIniciado = ""; 
+
+                                selecionarAnime(anime, estavaCorrigindo);
+                                verificarNotaNoMAL(anime.mal_id);
+                                listaDiv.style.display = 'none';  
+                                
+                                if (estavaCorrigindo) {
+                                    chrome.storage.sync.get(['autoCloseCorrection'], (res) => {
+                                        if (res.autoCloseCorrection ?? true) window.close();
+                                    });
+                                }
+                        });
                     });
                 });
                 listaDiv.appendChild(div);
@@ -621,25 +632,26 @@ function salvarDados() {
         nota_mal: notaMalSalvar // 👈 Salva a nota individual no banco de dados local
     };
 
-    chrome.storage.local.get(['syncMal', 'officialScore', 'mal_access_token'], (config) => {
-        let status = document.getElementById('status');
-        
-        // Se a nota do MAL e a técnica precisarem ser as mesmas, sobrescreve a nota de envio e de salvamento
-        if (config.officialScore) {
-            dados.nota_mal = Math.round(mediaVal);
-        }
+    chrome.storage.sync.get(['syncMal', 'officialScore'], (configSync) => {
+        chrome.storage.local.get(['mal_access_token'], (configLocal) => {
+            let status = document.getElementById('status');
+            
+            if (configSync.officialScore) {
+                dados.nota_mal = Math.round(mediaVal);
+            }
 
-        let salvar = {};
-        salvar[nomeChave] = dados;
-        chrome.storage.local.set(salvar);
+            let salvar = {};
+            salvar[nomeChave] = dados;
+            chrome.storage.local.set(salvar);
 
-        if (config.syncMal && config.mal_access_token && malID) {
-            status.innerText = "Sincronizando MAL...";
-            enviarParaMAL(malID, dados.nota_mal, config.mal_access_token, dados);
-        } else {
-            status.innerText = "Salvo Localmente!";
-            setTimeout(() => status.innerText = "", 2000);
-        }
+            if (configSync.syncMal && configLocal.mal_access_token && malID) {
+                status.innerText = "Sincronizando MAL...";
+                enviarParaMAL(malID, dados.nota_mal, configLocal.mal_access_token, dados);
+            } else {
+                status.innerText = "Salvo Localmente!";
+                setTimeout(() => status.innerText = "", 2000);
+            }
+        });
     });
 }
 

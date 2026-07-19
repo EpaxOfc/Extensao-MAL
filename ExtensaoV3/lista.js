@@ -79,14 +79,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target == document.getElementById('modalDetalhes')) fecharModal(); 
     });
 
-    chrome.storage.local.get(['enable3DHover'], (res) => {
+    chrome.storage.sync.get(['enable3DHover'], (res) => {
         is3DEnabled = res.enable3DHover || false;
         atualizarBotao3D();
     });
 
     document.getElementById('btnToggle3D').addEventListener('click', () => {
         is3DEnabled = !is3DEnabled;
-        chrome.storage.local.set({ enable3DHover: is3DEnabled });
+        chrome.storage.sync.set({ enable3DHover: is3DEnabled });
         atualizarBotao3D();
         
         if (!is3DEnabled) {

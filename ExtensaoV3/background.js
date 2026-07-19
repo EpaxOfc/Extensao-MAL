@@ -471,7 +471,7 @@ async function executarBuscaJikan(termo, isAuto, isMovie, sendResponse) {
         }
 
         // DICIONÁRIO DE TRADUÇÕES
-        const localData = await chrome.storage.local.get(['customDict']);
+        const localData = await chrome.storage.sync.get(['customDict']);
         const dicionarioUsuario = localData.customDict || {};
 
         const dicionarioBruto = {

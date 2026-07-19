@@ -105,20 +105,20 @@ function solicitarInfoDaPaginaPrincipal() {
     });
 }
 
-chrome.storage.local.get(['enablePrimeBasic', 'enablePrimeAdvanced', 'enableGoogleDrive'], (res) => {
+chrome.storage.sync.get(['enablePrimeBasic', 'enablePrimeAdvanced', 'enableGoogleDrive'], (res) => {
     if (res.enablePrimeBasic !== undefined) cfgEnablePrimeBasic = res.enablePrimeBasic;
     if (res.enablePrimeAdvanced !== undefined) cfgEnablePrimeAdvanced = res.enablePrimeAdvanced;
     if (res.enableGoogleDrive !== undefined) cfgEnableGoogleDrive = res.enableGoogleDrive;
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local') {
+    if (area === 'sync') {
         if (changes.enablePrimeBasic) cfgEnablePrimeBasic = changes.enablePrimeBasic.newValue;
         if (changes.enablePrimeAdvanced) cfgEnablePrimeAdvanced = changes.enablePrimeAdvanced.newValue;
         if (changes.enableGoogleDrive) cfgEnableGoogleDrive = changes.enableGoogleDrive.newValue;
 
         if (changes.netflixSubSize || changes.netflixCrSubs) {
-            chrome.storage.local.get(['netflixCrSubs', 'netflixSubSize'], (res) => {
+            chrome.storage.sync.get(['netflixCrSubs', 'netflixSubSize'], (res) => {
                 netflixSubSizeSalvo = res.netflixSubSize || 28; 
                 let crSubs = res.netflixCrSubs ?? true;
                 if (crSubs) {
@@ -500,7 +500,7 @@ const intervaloCheck = setInterval(() => {
     }
 
     if (videoValido) {
-        chrome.storage.local.get(['customUrls', 'enableGoogleDrive'], (res) => {
+        chrome.storage.sync.get(['customUrls', 'enableGoogleDrive'], (res) => {
             const urlsPermitidas = [
                 "netflix.com", "crunchyroll.com", "primevideo.com", "amazon.", 
                 "youtube.com/embed", "youtube-nocookie.com/embed", 
@@ -568,7 +568,7 @@ function iniciarMonitoramento(video) {
 
     devLog("MAL Reviewer: Vídeo detectado. Monitorando...");
     
-    chrome.storage.local.get([
+    chrome.storage.sync.get([
         'autoUpdateProgress', 'autoUpdateTrigger', 'autoCompleteOnLast', 
         'blockRegressionOnComplete', 'autoOpenOverlayIfNoScore', 
         'allowInFullscreen', 'discreetOverlayFs', 'discreetProgressFs', 'discreetFlashFs', 
@@ -1846,7 +1846,7 @@ function mostrarToastRastreio(anime, epAtual, epTotal, seasonNum) {
         return;
     }
 
-    if (window.cfgEnableToastExp === false) return;
+    if (!window.cfgEnableToastExp && !window.cfgEnableToastMicro && !window.cfgEnableToastFlash) return;
 
     let toastAntigo = document.getElementById('mal-tracking-toast');
     if (toastAntigo) toastAntigo.remove(); 
@@ -1869,7 +1869,6 @@ function mostrarToastRastreio(anime, epAtual, epTotal, seasonNum) {
     let div = document.createElement('div');
     div.id = 'mal-tracking-toast';
     
-    // Escapa as variáveis de configuração de classes de forma preventiva
     div.className = `size-exp-${escapeHTML(window.cfgSizeToastExp || 'medium')} size-micro-${escapeHTML(window.cfgSizeToastMicro || 'medium')} size-flash-${escapeHTML(window.cfgSizeToastFlash || 'medium')}`;
     
     div.innerHTML = `   
@@ -1944,19 +1943,32 @@ function mostrarToastRastreio(anime, epAtual, epTotal, seasonNum) {
     };
     document.addEventListener('fullscreenchange', listenerTelaCheia);
 
-    const collapse = () => {
+const collapse = () => {
         if (isToastDismissed) return;
-        isToastMicro = true;
         isHoverMode = false;
         div.classList.remove('mostrar', 'hover-mode');
-        div.classList.add('micro-mode');
+        
+        if (window.cfgEnableToastMicro) {
+            isToastMicro = true;
+            div.classList.add('micro-mode');
+        } else {
+            isToastMicro = false;
+        }
     };
 
     setTimeout(() => {
-        div.classList.add('mostrar');
-        startTimerBar(6000);
-        clearTimeout(toastTimeout);
-        toastTimeout = setTimeout(collapse, 6000);
+        if (window.cfgEnableToastExp) {
+            div.classList.add('mostrar');
+            startTimerBar(6000);
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(collapse, 6000);
+        } 
+        else if (window.cfgEnableToastMicro) {
+            collapse();
+        } 
+        else {
+            div.classList.remove('mostrar', 'micro-mode');
+        }
     }, 50);
 
     div.querySelector('.toast-close-x').addEventListener('click', () => {
@@ -2308,8 +2320,14 @@ function forcarFlashLocal() {
     
     setTimeout(() => { 
         if (isToastDismissed) return;
-        toast.className = `mostrar micro-mode size-micro-${window.cfgSizeToastMicro || 'medium'} size-exp-${window.cfgSizeToastExp || 'medium'} ${extraClasses.join(' ')}`;
-        isToastMicro = true;
+        
+        if (window.cfgEnableToastMicro) {
+            toast.className = `micro-mode size-micro-${window.cfgSizeToastMicro || 'medium'} size-exp-${window.cfgSizeToastExp || 'medium'} ${extraClasses.join(' ')}`;
+            isToastMicro = true;
+        } else {
+            toast.className = `size-exp-${window.cfgSizeToastExp || 'medium'} ${extraClasses.join(' ')}`; 
+            isToastMicro = false;
+        }
         isHoverMode = false;
     }, 3000);
 }

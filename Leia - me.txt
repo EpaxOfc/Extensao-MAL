@@ -13,5 +13,5 @@ Dentro da página de extensões, procure pela opção "Modo do desenvolvedor" (g
 Assim que você ativar o Modo do desenvolvedor, uma nova barra com opções vai aparecer. Clique no botão chamado "Carregar sem pacote" (Ou carregar sem compactação).
 
 5. Selecione a pasta da extensão
-Vai abrir uma janela para você procurar arquivos no seu computador. Encontre e selecione a pasta "ExtensãoV2" que está na mesma pasta que esse arquivo de texto.
+Vai abrir uma janela para você procurar arquivos no seu computador. Encontre e selecione a pasta "ExtensãoV3" que está na mesma pasta que esse arquivo de texto.
 
