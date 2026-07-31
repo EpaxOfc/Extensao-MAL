@@ -88,3 +88,17 @@ input:focus, select:focus { border-color: #6c5ce7; box-shadow: 0 0 0 2px rgba(10
 .social-pill.pix:hover { background: #32BCAD; box-shadow: 0 6px 15px rgba(50, 188, 173, 0.4); }
 .social-pill.gmail:hover { background: #EA4335; box-shadow: 0 6px 15px rgba(234, 67, 53, 0.4); }
 .social-pill.prime-video:hover { background: #00A8E8; box-shadow: 0 6px 15px rgba(0, 168, 232, 0.4); }
+
+/* Toast Expandido Discreto (Simulador) */
+#sim-toast-exp.fs-discreet-exp {
+    width: max-content !important; height: auto !important;
+    padding: 8px 16px !important; border-radius: 50px !important;
+    display: flex; flex-direction: column; justify-content: center;
+    border-left: none !important; border: 1px solid rgba(0, 184, 148, 0.5);
+}
+#sim-toast-exp.fs-discreet-exp .sim-img,
+#sim-toast-exp.fs-discreet-exp .sim-monitor-label,
+#sim-toast-exp.fs-discreet-exp .sim-sub { display: none !important; }
+#sim-toast-exp.fs-discreet-exp > div:first-child { margin-top: 0 !important; }
+#sim-toast-exp.fs-discreet-exp .sim-title { font-size: 12px !important; text-align: center; }
+#sim-toast-exp.fs-discreet-exp .sim-toast-progress { height: 3px !important; margin-top: 6px !important; width: 150px; }

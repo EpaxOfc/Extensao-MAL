@@ -569,7 +569,7 @@ function iniciarMonitoramento(video) {
     devLog("MAL Reviewer: Vídeo detectado. Monitorando...");
     
     chrome.storage.sync.get([
-        'autoUpdateProgress', 'autoUpdateTrigger', 'autoCompleteOnLast', 
+        'autoUpdateProgress', 'autoUpdateTrigger', 'autoCompleteOnLast', 'discreetToastExpFs',
         'blockRegressionOnComplete', 'autoOpenOverlayIfNoScore', 
         'allowInFullscreen', 'discreetOverlayFs', 'discreetProgressFs', 'discreetFlashFs', 
         'enableToastExp', 'enableToastMicro', 'enableToastFlash', 'enableOverlay',
@@ -581,6 +581,7 @@ function iniciarMonitoramento(video) {
         cfgBlockRegressionOnComplete = res.blockRegressionOnComplete ?? true;
         cfgAutoOpenOverlayIfNoScore = res.autoOpenOverlayIfNoScore ?? true;
         window.cfgAllowInFullscreen = res.allowInFullscreen ?? true;
+        window.cfgDiscreetToastExpFs = res.discreetToastExpFs ?? false;
         window.cfgDiscreetOverlayFs = res.discreetOverlayFs ?? false;
         window.cfgDiscreetProgressFs = res.discreetProgressFs ?? false;
         window.cfgDiscreetFlashFs = res.discreetFlashFs ?? false;
@@ -1753,6 +1754,29 @@ function injetarCSSDiscreto() {
         #mal-overlay-container.fs-discreet:not(.micro-mode) .overlay-controls { display: flex !important; gap: 8px !important; margin-left: 2px !important; }
         #mal-overlay-container.fs-discreet:not(.micro-mode) .overlay-info { display: none !important; }
 
+        /* Toast Expandido em Modo Discreto (Pílula) */
+        #mal-tracking-toast.fs-discreet-exp:not(.micro-mode):not(.flash-mode):not(.hover-mode) {
+            width: auto !important; min-width: 150px; max-width: 300px;
+            padding: 8px 16px !important; border-radius: 50px !important;
+            border-left: none !important; border: 1px solid rgba(0, 184, 148, 0.5);
+        }
+        #mal-tracking-toast.fs-discreet-exp:not(.micro-mode):not(.flash-mode):not(.hover-mode) .toast-img-capa,
+        #mal-tracking-toast.fs-discreet-exp:not(.micro-mode):not(.flash-mode):not(.hover-mode) .toast-monitor-label,
+        #mal-tracking-toast.fs-discreet-exp:not(.micro-mode):not(.flash-mode):not(.hover-mode) .toast-text-sub,
+        #mal-tracking-toast.fs-discreet-exp:not(.micro-mode):not(.flash-mode):not(.hover-mode) .toast-controls,
+        #mal-tracking-toast.fs-discreet-exp:not(.micro-mode):not(.flash-mode):not(.hover-mode) > .toast-content > div:last-child {
+            display: none !important;
+        }
+        #mal-tracking-toast.fs-discreet-exp:not(.micro-mode):not(.flash-mode):not(.hover-mode) .toast-content > div:nth-child(2) {
+            margin-top: 0 !important; justify-content: center;
+        }
+        #mal-tracking-toast.fs-discreet-exp:not(.micro-mode):not(.flash-mode):not(.hover-mode) .toast-text-title {
+            font-size: 12px !important; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        #mal-tracking-toast.fs-discreet-exp:not(.micro-mode):not(.flash-mode):not(.hover-mode) .toast-progress-bg {
+            margin-top: 6px !important; height: 3px !important;
+        }
+
         /* 2. Barra Colapsada Enterrada no Chão */
         #mal-tracking-toast.fs-discreet-prog.micro-mode {
             /* 💡 COMO PUXAR MAIS PRA CIMA: Mude este valor de "8px" para "15px" ou mais se quiser ela mais alta! */
@@ -1846,7 +1870,11 @@ function mostrarToastRastreio(anime, epAtual, epTotal, seasonNum) {
         return;
     }
 
-    if (!window.cfgEnableToastExp && !window.cfgEnableToastMicro && !window.cfgEnableToastFlash) return;
+    let expOn = window.cfgEnableToastExp !== false;
+    let microOn = window.cfgEnableToastMicro !== false;
+    let flashOn = window.cfgEnableToastFlash !== false;
+
+    if (!expOn && !microOn && !flashOn) return;
 
     let toastAntigo = document.getElementById('mal-tracking-toast');
     if (toastAntigo) toastAntigo.remove(); 
@@ -1916,19 +1944,22 @@ function mostrarToastRastreio(anime, epAtual, epTotal, seasonNum) {
                 targetAppend = targetAppend.parentElement;
             }
             targetAppend.appendChild(div);
-            
+
+            if (window.cfgDiscreetToastExpFs) div.classList.add('fs-discreet-exp');
+            else div.classList.remove('fs-discreet-exp');
             if (window.cfgDiscreetProgressFs) div.classList.add('fs-discreet-prog');
             else div.classList.remove('fs-discreet-prog');
             if (window.cfgDiscreetFlashFs) div.classList.add('fs-discreet-flash-enabled');
             else div.classList.remove('fs-discreet-flash-enabled');
         } else {
-             if (window.location.href.includes("drive.google.com") || window.location.href.includes("youtube.com/embed")) {
+            if (window.location.href.includes("drive.google.com") || window.location.href.includes("youtube.com/embed")) {
                 let playerContainer = obterPlayerContainer();
                 playerContainer.appendChild(div);
             } else {
                 document.body.appendChild(div);
             }
             div.classList.remove('fs-discreet-prog', 'fs-discreet-flash-enabled');
+            div.classList.remove('fs-discreet-prog', 'fs-discreet-flash-enabled', 'fs-discreet-exp');
         }
     };
 
@@ -1943,12 +1974,12 @@ function mostrarToastRastreio(anime, epAtual, epTotal, seasonNum) {
     };
     document.addEventListener('fullscreenchange', listenerTelaCheia);
 
-const collapse = () => {
+    const collapse = () => {
         if (isToastDismissed) return;
         isHoverMode = false;
         div.classList.remove('mostrar', 'hover-mode');
         
-        if (window.cfgEnableToastMicro) {
+        if (microOn) {
             isToastMicro = true;
             div.classList.add('micro-mode');
         } else {
@@ -1957,16 +1988,14 @@ const collapse = () => {
     };
 
     setTimeout(() => {
-        if (window.cfgEnableToastExp) {
+        if (expOn) {
             div.classList.add('mostrar');
             startTimerBar(6000);
             clearTimeout(toastTimeout);
             toastTimeout = setTimeout(collapse, 6000);
-        } 
-        else if (window.cfgEnableToastMicro) {
+        } else if (microOn) {
             collapse();
-        } 
-        else {
+        } else {
             div.classList.remove('mostrar', 'micro-mode');
         }
     }, 50);
@@ -2306,6 +2335,8 @@ function forcarFlashLocal() {
     }
     if (!toast || isToastDismissed) return;
 
+    let microOn = window.cfgEnableToastMicro !== false;
+
     clearTimeout(toastTimeout); 
     toast.style.display = 'block';
 
@@ -2321,7 +2352,7 @@ function forcarFlashLocal() {
     setTimeout(() => { 
         if (isToastDismissed) return;
         
-        if (window.cfgEnableToastMicro) {
+        if (microOn) {
             toast.className = `micro-mode size-micro-${window.cfgSizeToastMicro || 'medium'} size-exp-${window.cfgSizeToastExp || 'medium'} ${extraClasses.join(' ')}`;
             isToastMicro = true;
         } else {

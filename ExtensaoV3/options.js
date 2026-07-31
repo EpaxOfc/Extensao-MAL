@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // SALVAMENTO AUTOMÁTICO DAS PREFERÊNCIAS E ELEMENTOS VISUAIS
-    const liveKeys = ['autoOpen', 'syncMal', 'officialScore', 'autoUpdateProgress', 'autoUpdateTrigger', 
+    const liveKeys = ['autoOpen', 'syncMal', 'officialScore', 'autoUpdateProgress', 'autoUpdateTrigger', 'discreetToastExpFs',
         'autoCompleteOnLast', 'blockRegressionOnComplete', 'autoOpenOverlayIfNoScore', 'allowInFullscreen', 
         'discreetOverlayFs', 'discreetProgressFs', 'discreetFlashFs', 'enableToastExp', 'enableToastMicro', 
         'enableToastFlash', 'enableOverlay', 'sizeToastExp', 'sizeToastMicro', 'sizeToastFlash', 'sizeOverlay', 
@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (id.startsWith('enable') && !id.includes('Prime')) syncElementState(id, e.target.checked);
             
+            if (id === 'discreetToastExpFs') document.getElementById('sim-toast-exp')?.classList.toggle('fs-discreet-exp', e.target.checked);
             if (id === 'discreetOverlayFs') document.getElementById('sim-overlay')?.classList.toggle('fs-discreet', e.target.checked);
             if (id === 'discreetProgressFs') document.getElementById('sim-toast-micro')?.classList.toggle('fs-discreet-prog', e.target.checked);
             if (id === 'discreetFlashFs') document.getElementById('sim-toast-flash')?.classList.toggle('fs-discreet-flash-enabled', e.target.checked);
@@ -660,6 +661,7 @@ function carregarConfig() {
             'forceSidePanel': res.forceSidePanel ?? true,
             'autoCloseCorrection': res.autoCloseCorrection ?? true,
             'allowInFullscreen': res.allowInFullscreen ?? true,
+            'discreetToastExpFs': res.discreetToastExpFs ?? false,
             'discreetProgressFs': res.discreetProgressFs ?? false,
             'discreetFlashFs': res.discreetFlashFs ?? false,
             'discreetOverlayFs': res.discreetOverlayFs ?? false,
@@ -668,6 +670,7 @@ function carregarConfig() {
             'enableToastFlash': res.enableToastFlash ?? true,
             'enableOverlay': res.enableOverlay ?? true,
             'netflixCrSubs': res.netflixCrSubs ?? true
+            
         };
         if (checks['discreetOverlayFs']) document.getElementById('sim-overlay')?.classList.add('fs-discreet');
         if (checks['discreetProgressFs']) document.getElementById('sim-toast-micro')?.classList.add('fs-discreet-prog');
@@ -784,7 +787,7 @@ function renderizarUrls() {
         item.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: #202024; padding: 8px 12px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #444;";
         let span = document.createElement('span'); span.textContent = "🌍 " + site; span.style.fontSize = "13px";
         let btn = document.createElement('button'); btn.textContent = "Remover"; btn.style.cssText = "background: #ff7675; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;";
-        btn.addEventListener('click', () => { sitesCustomizados.splice(index, 1); chrome.storage.local.set({ customUrls: sitesCustomizados }, renderizarUrls); });
+        btn.addEventListener('click', () => { sitesCustomizados.splice(index, 1); chrome.storage.sync.set({ customUrls: sitesCustomizados }, renderizarUrls); });
         item.appendChild(span); item.appendChild(btn); container.appendChild(item);
     });
 }
@@ -827,7 +830,7 @@ function renderizarDicionario() {
         btn.style.cssText = "background: #ff7675; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;";
         btn.addEventListener('click', () => { 
             delete dicionarioCustom[chave]; 
-            chrome.storage.local.set({ customDict: dicionarioCustom }, renderizarDicionario); 
+            chrome.storage.sync.set({ customDict: dicionarioCustom }, renderizarDicionario); 
         });
         
         item.appendChild(span); 
