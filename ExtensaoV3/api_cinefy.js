@@ -1,20 +1,16 @@
 // 📡 API EXTERNA: INTEGRAÇÃO COM O CINEFY AUTO PREENCHER
 
-const ID_EXTENSAO_CINEFY = "pkgcomlobhfgmpcodkpogidcpodholpk"; 
-
-chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
-    if (sender.id !== ID_EXTENSAO_CINEFY) return;
-
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    
     if (request.action === "PING") {
-        sendResponse({ status: "OK" });
-        return;
+        sendResponse({ sucesso: true });
+        return true;
     }
 
     if (request.action === "OBTER_NOTA_CINEFY") {
         processarRequisicaoCinefy(request).then(sendResponse);
         return true; 
     }
-    
 });
 
 async function processarRequisicaoCinefy(req) {

@@ -1,3 +1,83 @@
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // 1. LÓGICA DE ABAS UNIFICADAS (MAL E CINEFY)
+    const btnMal = document.getElementById('btnTabMal');
+    const btnCinefy = document.getElementById('btnTabCinefy');
+    const viewMal = document.getElementById('view-mal');
+    const viewCinefy = document.getElementById('view-cinefy');
+    const popupTabs = document.getElementById('popupTabs');
+
+    function setAbaAtiva(aba) {
+        if (aba === 'cinefy') {
+            viewMal.style.display = 'none';
+            viewCinefy.style.display = 'block';
+            btnCinefy.style.background = '#2dd4bf'; 
+            btnCinefy.style.color = '#000';
+            btnMal.style.background = 'transparent';
+            btnMal.style.color = '#a1a1aa';
+        } else {
+            viewMal.style.display = 'block';
+            viewCinefy.style.display = 'none';
+            btnMal.style.background = '#6c5ce7'; 
+            btnMal.style.color = '#fff';
+            btnCinefy.style.background = 'transparent';
+            btnCinefy.style.color = '#a1a1aa';
+        }
+    }
+
+    if (btnMal && btnCinefy) {
+        btnMal.addEventListener('click', () => setAbaAtiva('mal'));
+        btnCinefy.addEventListener('click', () => setAbaAtiva('cinefy'));
+    }
+
+    // Verifica se veio uma ordem do background para abrir o Cinefy
+    chrome.storage.local.get(['abrirAbaCinefy'], (res) => {
+        if (res.abrirAbaCinefy) {
+            if (popupTabs) popupTabs.style.display = 'flex';
+            setAbaAtiva('cinefy');
+            chrome.storage.local.remove('abrirAbaCinefy'); 
+        } else {
+            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                if (tabs[0] && tabs[0].url && tabs[0].url.includes("cinefy")) {
+                    if (popupTabs) popupTabs.style.display = 'flex';
+                    setAbaAtiva('cinefy'); 
+                }
+            });
+        }
+    });
+
+    // 2. INICIALIZAÇÃO DO MAL REVIEWER
+    document.getElementById('btnOptions').addEventListener('click', () => {
+        chrome.runtime.openOptionsPage();
+    });
+    
+    verificarModoDeSalvamento();
+    verificarConexaoNecessaria();
+    configurarOuvintes();
+
+    chrome.storage.sync.get(['syncMal', 'viewMode', 'officialScore'], (res) => {
+        if (res.syncMal) {
+            const btn = document.getElementById('btnSalvar');
+            if (btn) {
+                btn.innerText = "SALVAR NO MAL";
+                btn.style.background = "#2e51a2"; 
+            }
+        }
+
+        const mode = res.viewMode || 'popup';
+        document.body.classList.remove('popup-mode', 'sidepanel-mode');
+        document.body.classList.add(mode + '-mode');
+
+        // Controla exibição do campo de nota oficial do MAL com base na preferência
+        const boxMalOficial = document.getElementById('malOfficialScoreBox');
+        if (boxMalOficial) {
+            boxMalOficial.style.display = res.officialScore ? 'none' : 'flex';
+        }
+    });
+
+    iniciarRapido();
+});
+
 function normalizarCriterio(nome) {
     if (!nome) return "";
     let n = nome.trim();
@@ -29,35 +109,6 @@ function normalizarCriterio(nome) {
 let ultimoNomeIniciado = ""; 
 let timerDetectar = null;   
 
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('btnOptions').addEventListener('click', () => {
-        chrome.runtime.openOptionsPage();
-    });
-    
-    verificarModoDeSalvamento();
-    verificarConexaoNecessaria();
-    configurarOuvintes();
-
-    chrome.storage.sync.get(['syncMal', 'viewMode', 'officialScore'], (res) => {
-        if (res.syncMal) {
-            const btn = document.getElementById('btnSalvar');
-            btn.innerText = "SALVAR NO MAL";
-            btn.style.background = "#2e51a2"; 
-        }
-
-        const mode = res.viewMode || 'popup';
-        document.body.classList.remove('popup-mode', 'sidepanel-mode');
-        document.body.classList.add(mode + '-mode');
-
-        // 👈 Controla exibição do campo de nota oficial do MAL com base na preferência
-        const boxMalOficial = document.getElementById('malOfficialScoreBox');
-        if (boxMalOficial) {
-            boxMalOficial.style.display = res.officialScore ? 'none' : 'flex';
-        }
-    });
-
-    iniciarRapido();
-});
 
 chrome.tabs.onActivated.addListener(iniciarLento);
 

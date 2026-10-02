@@ -1285,7 +1285,7 @@ async function executarSincronizacaoLocalParaMAL() {
 }
 
 // CARREGAR ÍCONES EXTERNO
-const urlIcones = chrome.runtime.getURL('icons.html');
+const urlIcones = chrome.runtime.getURL('assets/icons.html');
 
 fetch(urlIcones)
     .then(res => {

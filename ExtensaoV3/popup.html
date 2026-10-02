@@ -2,104 +2,240 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
+  <title>MAL NE & Cinefy AP</title>
+  
+  <!-- CSS do MAL Reviewer -->
   <link rel="stylesheet" href="style.css">
+  
+  <!-- CSS do Cinefy (Vindo da subpasta) -->
+  <link rel="stylesheet" href="cinefy/popup.css">
+  
+  <style>
+      /* Ajuste base para o popup comportar as duas extensões confortavelmente */
+      body {
+          width: 400px;
+          background-color: #121214;
+          margin: 0;
+          padding: 15px;
+          color: white;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <header style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="margin:0;">MAL Notas</h3>
-        <button id="btnOptions" style="background:none; border:none; color:white; cursor:pointer; font-size:18px;">⚙️</button>
-    </header>
 
-    <!-- Área de Busca / Info do Anime -->
-    <div class="search-section">
-      <div class="input-group">
-        <input type="text" id="animeTitle" placeholder="Detectando anime...">
-        <button id="btnBuscar" title="Pesquisar manualmente">🔍</button>
+  <!-- ===================================== -->
+  <!-- BOTÕES DE TROCA DE ABA                -->
+  <!-- ===================================== -->
+  <div id="popupTabs" style="display: none; justify-content: center; gap: 10px; margin-bottom: 15px; background: #202024; padding: 5px; border-radius: 8px; border: 1px solid #333;">
+      <button id="btnTabMal" style="flex: 1; padding: 6px; background: #6c5ce7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s;">🟣 MAL Reviewer</button>
+      <button id="btnTabCinefy" style="flex: 1; padding: 6px; background: transparent; color: #a1a1aa; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s;">🎬 Cinefy AP</button>
+  </div>
+
+  <!-- ===================================== -->
+  <!-- ÁREA 1: MAL REVIEWER                  -->
+  <!-- ===================================== -->
+  <div id="view-mal">
+    <div class="container" style="max-width: 100%; margin: 0; padding: 0;">
+      <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3 style="margin:0; color: #fff;">MAL Notas</h3>
+          <button id="btnOptions" style="background:none; border:none; color:white; cursor:pointer; font-size:18px;">⚙️</button>
+      </header>
+
+      <!-- Área de Busca / Info do Anime -->
+      <div class="search-section">
+        <div class="input-group">
+          <input type="text" id="animeTitle" placeholder="Detectando anime..." style="width: 100%; box-sizing: border-box;">
+          <button id="btnBuscar" title="Pesquisar manualmente">🔍</button>
+        </div>
+        
+        <div id="listaResultados" class="lista-resultados"></div>
+
+        <div id="correctionModeContainer" style="display: none; background: rgba(255, 118, 117, 0.1); border: 1px solid #ff7675; padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+            <p style="font-size: 13px; color: #ff7675; margin: 0 0 8px 0; font-weight: bold;">⚠️ Modo de Correção Ativo</p>
+            <p style="font-size: 11px; color: #ddd; margin: 0 0 12px 0;">Escreva o nome do anime correto, clique na lupa (ou aperte Enter) e selecione o anime na lista abaixo.</p>
+            <button id="btnCancelCorrection" style="background: #2d2d33; color: white; border: 1px solid #444; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: 0.2s;">Cancelar Busca</button>
+        </div>
+
+        <div id="animeInfo" class="anime-card" style="display: none; flex-direction: row; align-items: flex-start; gap: 10px;">
+          <img id="animeCapa" src="" alt="Capa" style="max-width: 50px; border-radius: 4px;">
+          <div class="anime-details" style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+            <strong id="animeNomeOficial">Nome do Anime</strong>
+            <span id="animeAno" class="tag-ano" style="font-size: 11px; color: #aaa;">Ano</span>
+            <span id="epAssistindo" style="font-size: 11px; color: #6c5ce7; font-weight: bold; margin-top: 2px; display: none;"></span>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; font-weight: bold; margin-top: 10px;">
+                <span style="background: rgba(241, 196, 15, 0.15); color: #f1c40f; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+                    ⭐ Global: <span id="notaGlobalMAL">-</span>
+                </span>
+                <span style="background: rgba(155, 89, 182, 0.15); color: #9b59b6; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+                    👤 Sua Nota: <span id="notaUsuarioMAL">-</span>
+                </span>
+                <span style="background: rgba(0, 184, 148, 0.15); color: #00b894; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+                    🛠️ Técnica: <span id="notaTecnicaHeader">-</span>
+                </span>
+            </div>
+            <input type="hidden" id="malID">
+          </div>
+        </div>
       </div>
       
-      <div id="listaResultados" class="lista-resultados"></div>
+      <div id="areaDeAvaliacao">
+        <div id="malOfficialScoreBox" style="display: none; justify-content: space-between; align-items: center; background: rgba(108, 92, 231, 0.08); border: 1px solid rgba(108, 92, 231, 0.25); padding: 10px 12px; margin-bottom: 12px; border-radius: 8px; box-sizing: border-box;">
+            <span style="font-size: 13px; font-weight: bold; color: #fff;">Sua Nota Oficial (MAL)</span>
+            <select id="notaMalOficial" class="nota-select" style="width: 110px; background: #202024; color: #fff; border: 1px solid rgba(108, 92, 231, 0.4); border-radius: 4px; padding: 4px 6px; cursor: pointer; outline: none; font-size: 12px; font-weight: bold;">
+                <option value="0">-</option>
+                <option value="1">1.0 (Horrível)</option>
+                <option value="2">2.0</option>
+                <option value="3">3.0</option>
+                <option value="4">4.0</option>
+                <option value="5">5.0 (Médio)</option>
+                <option value="6">6.0</option>
+                <option value="7">7.0 (Bom)</option>
+                <option value="8">8.0</option>
+                <option value="9">9.0 (Ótimo)</option>
+                <option value="10">10.0 (Obra-Prima)</option>
+            </select>
+        </div>
 
-      <div id="correctionModeContainer" style="display: none; background: rgba(255, 118, 117, 0.1); border: 1px solid #ff7675; padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
-          <p style="font-size: 13px; color: #ff7675; margin: 0 0 8px 0; font-weight: bold;">⚠️ Modo de Correção Ativo</p>
-          <p style="font-size: 11px; color: #ddd; margin: 0 0 12px 0;">Escreva o nome do anime correto, clique na lupa (ou aperte Enter) e selecione o anime na lista abaixo.</p>
-          <button id="btnCancelCorrection" style="background: #2d2d33; color: white; border: 1px solid #444; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: 0.2s;">Cancelar Busca</button>
+        <div id="containerNotasDinamico" class="criteria-grid"></div>
+        
+        <div class="footer">
+          <div class="media-display">
+            <span>MÉDIA TÉCNICA</span>
+            <h1 id="mediaFinal">0.00</h1>
+          </div>
+          <button id="btnSalvar">SALVAR REVIEW</button>
+        </div>
       </div>
+      <button id="btnVerLista" style="width:100%; margin-top:10px; background:#2d2d33; color:white; border:1px solid #444; padding:5px; cursor:pointer; border-radius:5px; font-size:12px;">
+          📂 Ver Minha Biblioteca
+      </button>
+      <p id="status" class="status-msg"></p>
+    </div>
 
-      <div id="animeInfo" class="anime-card" style="display: none; flex-direction: row; align-items: flex-start; gap: 10px;">
-        <img id="animeCapa" src="" alt="Capa" style="max-width: 50px; border-radius: 4px;">
-        <div class="anime-details" style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
-          <strong id="animeNomeOficial">Nome do Anime</strong>
-          <span id="animeAno" class="tag-ano" style="font-size: 11px; color: #aaa;">Ano</span>
-          <span id="epAssistindo" style="font-size: 11px; color: #6c5ce7; font-weight: bold; margin-top: 2px; display: none;"></span>
-          
-          <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; font-weight: bold; margin-top: 10px;">
-              <span style="background: rgba(241, 196, 15, 0.15); color: #f1c40f; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
-                  ⭐ Global: <span id="notaGlobalMAL">-</span>
-              </span>
-              <span style="background: rgba(155, 89, 182, 0.15); color: #9b59b6; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
-                  👤 Sua Nota: <span id="notaUsuarioMAL">-</span>
-              </span>
-              <span style="background: rgba(0, 184, 148, 0.15); color: #00b894; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
-                  🛠️ Técnica: <span id="notaTecnicaHeader">-</span>
-              </span>
+    <!-- Modal Aviso Conexão -->
+    <div id="modalAvisoConexao" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; justify-content:center; align-items:center; padding:20px; text-align:center;">
+        <div style="background:#202024; padding:25px; border-radius:12px; border:1px solid #444; max-width:280px;">
+            <h3 style="margin-top:0; color:#6c5ce7;">Sincronização</h3>
+            <p style="font-size:13px; color:#ccc; line-height:1.5;">Você ainda não conectou sua conta do MyAnimeList.</p>
+            <button id="btnIrParaLogin" style="width:100%; background:#2e51a2; color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; margin-bottom:10px;">Sincronizar com MAL</button>
+            <button id="btnUsarLocal" style="width:100%; background:transparent; color:#aaa; border:1px solid #444; padding:8px; border-radius:6px; cursor:pointer; font-size:12px;">Usar apenas Localmente</button>
+        </div>
+    </div>
+  </div>
+
+  <!-- ÁREA 2: CINEFY Auto Preencher               -->
+  <div id="view-cinefy" style="display: none; padding-bottom: 70px;">
+      <h2 style="color: #e4e4e7; font-size: 18px; margin-top: 0; margin-bottom: 20px; font-weight: 600;">⚙️ Preferências do Autofill</h2>
+
+      <div class="section">
+          <div class="section-title">📡 Integração</div>
+
+          <div class="switch-row">
+              <div class="switch-label-col">
+                  <span class="switch-title">Aplicar Nota Automaticamente</span>
+                  <span class="switch-desc">Verifica e aplica a nota salva no vídeo.</span>
+              </div>
+              <label class="switch">
+                  <input type="checkbox" id="enable-rating">
+                  <span class="slider"></span>
+              </label>
           </div>
           
-          <input type="hidden" id="malID">
-        </div>
-      </div>
-    </div>
-    
-    <div id="areaDeAvaliacao">
-      <!-- CAMPO DE NOTA OFICIAL DO MAL (Escondido se officialScore for true) -->
-      <div id="malOfficialScoreBox" style="display: none; justify-content: space-between; align-items: center; background: rgba(108, 92, 231, 0.08); border: 1px solid rgba(108, 92, 231, 0.25); padding: 10px 12px; margin-bottom: 12px; border-radius: 8px; box-sizing: border-box;">
-          <span style="font-size: 13px; font-weight: bold; color: #fff;">Sua Nota Oficial (MAL)</span>
-          <select id="notaMalOficial" class="nota-select" style="width: 110px; background: #202024; color: #fff; border: 1px solid rgba(108, 92, 231, 0.4); border-radius: 4px; padding: 4px 6px; cursor: pointer; outline: none; font-size: 12px; font-weight: bold;">
-              <option value="0">-</option>
-              <option value="1">1.0 (Horrível)</option>
-              <option value="2">2.0</option>
-              <option value="3">3.0</option>
-              <option value="4">4.0</option>
-              <option value="5">5.0 (Médio)</option>
-              <option value="6">6.0</option>
-              <option value="7">7.0 (Bom)</option>
-              <option value="8">8.0</option>
-              <option value="9">9.0 (Ótimo)</option>
-              <option value="10">10.0 (Obra-Prima)</option>
-          </select>
-      </div>
+          <div class="switch-row">
+              <div class="switch-label-col">
+                  <span class="switch-title">Copiar Visibilidade</span>
+                  <span class="switch-desc">Copia o estado "Público" ou "Privado".</span>
+              </div>
+              <label class="switch">
+                  <input type="checkbox" id="copy-vis">
+                  <span class="slider"></span>
+              </label>
+          </div>
 
-      <!-- Área de Notas DINÂMICA -->
-      <div id="containerNotasDinamico" class="criteria-grid">
+          <div class="switch-row">
+              <div class="switch-label-col">
+                  <span class="switch-title">Usar nome da Obra como Título</span>
+                  <span class="switch-desc">Se desligado, o Título e a Obra salvos no slot serão totalmente independentes.</span>
+              </div>
+              <label class="switch">
+                  <input type="checkbox" id="use-obra-as-title">
+                  <span class="slider"></span>
+              </label>
+          </div>
       </div>
       
-      <div class="footer">
-        <div class="media-display">
-          <span>MÉDIA TÉCNICA</span>
-          <h1 id="mediaFinal">0.00</h1>
-        </div>
-        <button id="btnSalvar">SALVAR REVIEW</button>
+      <div class="section">
+          <div class="section-title">⌨️ Atalhos do Teclado</div>
+          <p class="help-text">Os atalhos se salvam automaticamente ao digitar.</p>
+          <div class="row">
+              <div>
+                  <label>Copiar/Salvar <button class="mini-reset" id="reset-key-save" title="Resetar para Alt+S">↺</button></label>
+                  <input type="text" id="key-save" class="key-recorder" readonly>
+              </div>
+              <div>
+                  <label>Preencher <button class="mini-reset" id="reset-key-fill" title="Resetar para Alt+B">↺</button></label>
+                  <input type="text" id="key-fill" class="key-recorder" readonly>
+              </div>
+          </div>
       </div>
-    </div>
-    <button id="btnVerLista" style="width:100%; margin-top:10px; background:#2d2d33; color:white; border:1px solid #444; padding:5px; cursor:pointer; border-radius:5px; font-size:12px;">
-        📂 Ver Minha Biblioteca
-    </button>
 
-    <p id="status" class="status-msg"></p>
+      <div class="section">
+          <div class="section-title">⏱️ Velocidades de Espera (Delays)</div>
+          <div class="row" style="margin-bottom: 10px;">
+              <div>
+                  <label>Obra (ms)</label>
+                  <input type="number" id="delay-obra" min="500" step="100">
+              </div>
+              <div>
+                  <label>Menus (ms)</label>
+                  <input type="number" id="delay-menu" min="200" step="50">
+              </div>
+              <div>
+                  <label>Playlist (ms)</label>
+                  <input type="number" id="delay-playlist" min="300" step="100">
+              </div>
+          </div>
+          <div class="switch-row">
+              <div class="switch-label-col">
+                  <span class="switch-title">Sistema de Retry (3x)</span>
+                  <span class="switch-desc">Tenta novamente em caso de falhas de carregamento.</span>
+              </div>
+              <label class="switch">
+                  <input type="checkbox" id="retry-on-fail">
+                  <span class="slider"></span>
+              </label>
+          </div>
+      </div>
+
+      <div class="section">
+          <div class="section-title">📝 Textos Dinâmicos</div>
+          <label>Título Padrão (Template Rápido)</label>
+          <input type="text" id="title-template" style="margin-bottom: 10px;">
+          
+          <label>Formato de Preenchimento (Sem Temp)</label>
+          <input type="text" id="title-no-temp" style="margin-bottom: 10px;">
+          
+          <label>Formato de Preenchimento (Com Temp)</label>
+          <input type="text" id="title-temp" style="margin-bottom: 10px;">
+
+          <label>Descrição Padrão</label>
+          <textarea id="desc-template" rows="4"></textarea>
+      </div>
+
+      <!-- Barra estilo Discord (Aparece ao editar textos/números) -->
+      <div id="unsaved-bar">
+          <span>⚠️ Modificações não salvas</span>
+          <div class="unsaved-actions">
+              <button id="btn-reset">Desfazer</button>
+              <button id="btn-save-bar">Salvar</button>
+          </div>
+      </div>
   </div>
 
-  <!-- Modal de Aviso de Conexão -->
-  <div id="modalAvisoConexao" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; justify-content:center; align-items:center; padding:20px; text-align:center;">
-      <div style="background:#202024; padding:25px; border-radius:12px; border:1px solid #444; max-width:280px;">
-          <h3 style="margin-top:0; color:#6c5ce7;">Sincronização</h3>
-          <p style="font-size:13px; color:#ccc; line-height:1.5;">Você ainda não conectou sua conta do MyAnimeList.</p>
-          
-          <button id="btnIrParaLogin" style="width:100%; background:#2e51a2; color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; margin-bottom:10px;">Sincronizar com MAL</button>
-          
-          <button id="btnUsarLocal" style="width:100%; background:transparent; color:#aaa; border:1px solid #444; padding:8px; border-radius:6px; cursor:pointer; font-size:12px;">Usar apenas Localmente</button>
-      </div>
-  </div>
-
+  <!-- Scripts das duas extensões (cada um cuida da sua própria div) -->
   <script src="popup.js"></script>
+  <script src="cinefy/popup.js"></script>
 </body>
 </html>

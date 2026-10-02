@@ -1,6 +1,6 @@
 // Credenciais seguras (Configurado como App "Other")
 importScripts('config.js');
-importScripts('api_cinefy.js');
+importScripts('cinefy/api_MAL_notas.js'); 
 
 const CLIENT_ID = CONFIG.CLIENT_ID; 
 const REDIRECT_URI = chrome.identity.getRedirectURL(); 
@@ -85,16 +85,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         return true; 
     }
-    if (message.action === 'abrir_popup_nativamente') {
-        if (chrome.action && chrome.action.openPopup) {
-            chrome.action.openPopup().catch(() => {
+    if (message.action === 'abrir_popup_nativamente' || message.action === "open_settings") {
+        chrome.storage.local.set({ abrirAbaCinefy: true }, () => {
+            if (chrome.action && chrome.action.openPopup) {
+                chrome.action.openPopup().catch(() => {
+                    chrome.runtime.openOptionsPage();
+                });
+                sendResponse({ success: true });
+            } else {
                 chrome.runtime.openOptionsPage();
-            });
-            sendResponse({ success: true });
-        } else {
-            chrome.runtime.openOptionsPage();
-            sendResponse({ success: false });
-        }
+                sendResponse({ success: false });
+            }
+        });
         return true;
     }
 

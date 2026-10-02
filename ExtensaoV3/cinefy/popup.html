@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <h2>⚙️ Preferências do Autofill</h2>
+
+    <div class="section">
+        <div class="section-title">📡 Integração Externa</div>
+        
+        <div class="switch-row">
+            <div class="switch-label-col">
+                <span class="switch-title">Sincronizar com Extensão MAL Notas Extras</span>
+                <span class="switch-desc">Puxa notas do MAL/Local automaticamente.</span>
+                <span id="integration-status">Buscando extensão...</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="enable-integration" disabled>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="switch-row">
+            <div class="switch-label-col">
+                <span class="switch-title">Aplicar Nota Automaticamente</span>
+                <span class="switch-desc">Verifica e aplica a nota salva no vídeo.</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="enable-rating">
+                <span class="slider"></span>
+            </label>
+        </div>
+        
+        <div class="switch-row">
+            <div class="switch-label-col">
+                <span class="switch-title">Copiar Visibilidade</span>
+                <span class="switch-desc">Copia o estado "Público" ou "Privado".</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="copy-vis">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="switch-row">
+            <div class="switch-label-col">
+                <span class="switch-title">Usar nome da Obra como Título</span>
+                <span class="switch-desc">Se desligado, o Título e a Obra salvos, no slot serão totalmente independentes.</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="use-obra-as-title">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">⌨️ Atalhos do Teclado</div>
+        <p class="help-text">Os atalhos se salvam automaticamente ao digitar.</p>
+        <div class="row">
+            <div>
+                <label>Copiar/Salvar <button class="mini-reset" id="reset-key-save" title="Resetar para Alt+S">↺</button></label>
+                <input type="text" id="key-save" class="key-recorder" readonly>
+            </div>
+            <div>
+                <label>Preencher <button class="mini-reset" id="reset-key-fill" title="Resetar para Alt+B">↺</button></label>
+                <input type="text" id="key-fill" class="key-recorder" readonly>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">⏱️ Velocidades de Espera (Delays)</div>
+        <div class="row" style="margin-bottom: 10px;">
+            <div>
+                <label>Obra (ms)</label>
+                <input type="number" id="delay-obra" min="500" step="100">
+            </div>
+            <div>
+                <label>Menus (ms)</label>
+                <input type="number" id="delay-menu" min="200" step="50">
+            </div>
+            <div>
+                <label>Playlist (ms)</label>
+                <input type="number" id="delay-playlist" min="300" step="100">
+            </div>
+        </div>
+        <div class="switch-row">
+            <div class="switch-label-col">
+                <span class="switch-title">Sistema de Retry (3x)</span>
+                <span class="switch-desc">Tenta novamente em caso de falhas de carregamento.</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="retry-on-fail">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">📝 Textos Dinâmicos</div>
+        <label>Título Padrão (Template Rápido)</label>
+        <input type="text" id="title-template" style="margin-bottom: 10px;">
+        
+        <label>Formato de Preenchimento (Sem Temp)</label>
+        <input type="text" id="title-no-temp" style="margin-bottom: 10px;">
+        
+        <label>Formato de Preenchimento (Com Temp)</label>
+        <input type="text" id="title-temp" style="margin-bottom: 10px;">
+
+        <label>Descrição Padrão</label>
+        <textarea id="desc-template" rows="4"></textarea>
+    </div>
+
+    <!-- Barra estilo Discord (Aparece ao editar textos/números) -->
+    <div id="unsaved-bar">
+        <span>⚠️ Modificações não salvas</span>
+        <div class="unsaved-actions">
+            <button id="btn-reset">Desfazer</button>
+            <button id="btn-save-bar">Salvar</button>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

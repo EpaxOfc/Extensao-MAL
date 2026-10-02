@@ -1,7 +1,5 @@
-/* ==========================================================================
-   RESET GLOBAL E REGRAS DE SEGURANÇA DE DESIGN
-   ========================================================================== */
-* {
+/*    RESET GLOBAL E REGRAS DE SEGURANÇA DE DESIGN */
+|* {
   box-sizing: border-box; /* Impede que paddings e bordas estourem o tamanho da tela e cortem os cantos */
 }
 
@@ -20,20 +18,18 @@ body {
   color: var(--text);
   margin: 0;
   padding: 0;
-  overflow-x: hidden; /* Evita rolagem horizontal indesejada */
+  overflow-x: hidden; 
 }
 
 /* === CONFIGURAÇÕES DINÂMICAS DE EXIBIÇÃO === */
 
-/* Modo Popup (Tamanho Fixo Tradicional, sem cantos cortados) */
 body.popup-mode {
   width: 340px;
 }
 
-/* Modo Barra Lateral / Side Panel (Totalmente Fluido e Ajustável) */
 body.sidepanel-mode {
   width: 100%;
-  min-width: 250px; /* Impede que o design quebre se a barra for muito espremida */
+  min-width: 250px; 
   min-height: 100vh;
 }
 
@@ -59,7 +55,7 @@ header h3 {
 
 /* Área de Busca */
 .search-section {
-  position: relative; /* Define este container como ponto de ancoragem para os resultados absolutos */
+  position: relative; 
   width: 100%;
 }
 
@@ -92,7 +88,7 @@ input[type="text"]:focus {
   cursor: pointer;
   border-radius: 6px;
   width: 40px;
-  flex-shrink: 0; /* Impede que o botão da lupa seja esmagado */
+  flex-shrink: 0; 
   transition: 0.2s;
 }
 
@@ -104,9 +100,9 @@ input[type="text"]:focus {
 .lista-resultados {
   position: absolute;
   background: #25252b;
-  width: 100%; /* Acompanha dinamicamente 100% da largura do input group */
+  width: 100%; 
   left: 0;
-  top: 100%; /* Posiciona perfeitamente colado abaixo do campo de busca */
+  top: 100%; 
   max-height: 200px;
   overflow-y: auto;
   z-index: 100;
@@ -181,7 +177,7 @@ input[type="text"]:focus {
   width: fit-content;
 }
 
-/* Grid de Notas (Fluido e Responsivo) */
+/* Grid de Notas */
 .criteria-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -190,7 +186,6 @@ input[type="text"]:focus {
   width: 100%;
 }
 
-/* AJUSTE INTELIGENTE: Se a barra lateral estiver muito espremida, muda para 1 coluna */
 @media (max-width: 280px) {
   .criteria-grid {
     grid-template-columns: 1fr;
