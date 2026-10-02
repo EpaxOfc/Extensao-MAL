@@ -2031,22 +2031,20 @@ function mostrarToastRastreio(anime, epAtual, epTotal, seasonNum) {
         btnWrong.addEventListener('click', () => {
             lastCorrectionClickTime = Date.now(); 
             chrome.storage.local.set({ isCorrectionMode: true }, () => {
-                chrome.storage.local.get(['viewMode', 'forceSidePanel'], (res) => {
+                chrome.storage.sync.get(['viewMode', 'forceSidePanel'], (res) => {
                     let force = res.forceSidePanel ?? true;
+                    
                     if (res.viewMode === 'sidepanel' || force) {
                         chrome.runtime.sendMessage({ action: 'openSidePanel' }, (response) => {
+                            // Se a barra lateral falhar (ex: Opera), abre o Popup nativo!
                             if (!response || !response.success) {
-                                btnWrong.textContent = "Abra a extensão lá em cima ↗️";
-                                btnWrong.style.color = "#a29bfe"; btnWrong.style.textDecoration = "none";
-                                clearTimeout(toastTimeout); startTimerBar(5000); toastTimeout = setTimeout(collapse, 5000);
-                            } else {
-                                isToastDismissed = true; div.remove();
+                                chrome.runtime.sendMessage({ action: 'abrir_popup_nativamente' });
                             }
+                            isToastDismissed = true; div.remove();
                         });
                     } else {
-                        btnWrong.textContent = "Abra a extensão lá em cima ↗️";
-                        btnWrong.style.color = "#a29bfe"; btnWrong.style.textDecoration = "none";
-                        clearTimeout(toastTimeout); startTimerBar(5000); toastTimeout = setTimeout(collapse, 5000);
+                        chrome.runtime.sendMessage({ action: 'abrir_popup_nativamente' });
+                        isToastDismissed = true; div.remove();
                     }
                 });
             });
@@ -2208,24 +2206,19 @@ function mostrarOverlay() {
     div.querySelector('#btnOpenExtension').addEventListener('click', () => {
         chrome.storage.local.set({ 'ultimoAnimeDetectado': animeDetectado.title, 'ultimoAnimeDetectadoExato': animeDetectado });
         
-        const exibirMensagemDeClique = () => {
-            div.querySelector('.overlay-body').innerHTML = `
-                <div style="text-align: center; padding: 15px 5px; animation: fadeIn 0.4s;">
-                    <div style="font-size: 30px; margin-bottom: 10px;">🧩</div>
-                    <div style="font-size: 14px; color: #fff; font-weight: bold;">Abra a extensão</div>
-                    <div style="font-size: 12px; color: #a29bfe; margin-top: 6px;">Clique no ícone na barra superior!</div>
-                </div>`;
-            setTimeout(fecharTotalmente, 4500);
-        };
-
-        chrome.storage.local.get(['viewMode', 'forceSidePanel'], (res) => {
+        chrome.storage.sync.get(['viewMode', 'forceSidePanel'], (res) => {
             let force = res.forceSidePanel ?? true;
+            
             if (res.viewMode === 'sidepanel' || force) {
                 chrome.runtime.sendMessage({ action: 'openSidePanel' }, (response) => {
-                    if (response && response.success) fecharTotalmente(); else exibirMensagemDeClique();
+                    if (!response || !response.success) {
+                        chrome.runtime.sendMessage({ action: 'abrir_popup_nativamente' });
+                    }
+                    fecharTotalmente();
                 });
             } else { 
-                exibirMensagemDeClique(); 
+                chrome.runtime.sendMessage({ action: 'abrir_popup_nativamente' });
+                fecharTotalmente(); 
             }
         });
     });

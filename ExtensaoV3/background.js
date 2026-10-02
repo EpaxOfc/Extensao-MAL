@@ -16,6 +16,8 @@ const devlog = devLog;
 
 devLog("Sua Redirect URI é:", REDIRECT_URI);
 
+
+
 function generateCodeVerifier() {
     const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
@@ -82,6 +84,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ success: false, error: "API sidePanel não suportada no navegador" });
         }
         return true; 
+    }
+    if (message.action === 'abrir_popup_nativamente') {
+        if (chrome.action && chrome.action.openPopup) {
+            chrome.action.openPopup().catch(() => {
+                chrome.runtime.openOptionsPage();
+            });
+            sendResponse({ success: true });
+        } else {
+            chrome.runtime.openOptionsPage();
+            sendResponse({ success: false });
+        }
+        return true;
     }
 
     if (message.action === 'obterTokenValido') {
