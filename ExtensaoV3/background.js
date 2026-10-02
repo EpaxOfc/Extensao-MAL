@@ -1,5 +1,6 @@
 // Credenciais seguras (Configurado como App "Other")
 importScripts('config.js');
+importScripts('api_cinefy.js');
 
 const CLIENT_ID = CONFIG.CLIENT_ID; 
 const REDIRECT_URI = chrome.identity.getRedirectURL(); 
